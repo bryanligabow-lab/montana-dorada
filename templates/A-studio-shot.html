@@ -1,0 +1,96 @@
+<!--
+  TEMPLATE A — STUDIO SHOT LIMPIO (estilo Paranoía Restobar)
+
+  Variables a reemplazar (el Composer/Designer las llena):
+    {{WIDTH}}            — ancho del viewport (ej: 1080)
+    {{HEIGHT}}           — alto del viewport (ej: 1350)
+    {{LOGO_URL}}         — URL del logo-cutout.png o logo-white.png
+    {{DISH_URL}}         — URL de la foto del plato (ya enhanced)
+    {{DISH_ALT}}         — alt text del plato
+    {{BOTTOM_TEXT}}      — opcional: teléfono/reservas (puede estar vacío)
+
+  Uso:
+    - Fondo degradado oscuro → claro (cyclorama)
+    - Plato centrado, con sombra suave
+    - Logo top-center 150px
+    - Texto inferior opcional, micro y discreto
+-->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600&family=Montserrat:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{width:{{WIDTH}}px;height:{{HEIGHT}}px;overflow:hidden;}
+  body{
+    font-family:'Inter',sans-serif;
+    color:#F5F1EA;
+    background:#0A0A0A;
+  }
+  .stage{
+    position:relative;
+    width:{{WIDTH}}px;
+    height:{{HEIGHT}}px;
+    overflow:hidden;
+    background:
+      radial-gradient(ellipse 70% 55% at 50% 65%, #2A1810 0%, #0A0A0A 70%),
+      linear-gradient(180deg, #0A0A0A 0%, #1A0F0A 40%, #3A2416 75%, #FFFFFF 100%);
+  }
+  .logo{
+    position:absolute;
+    top:50px;
+    left:50%;
+    transform:translateX(-50%);
+    width:150px;
+    height:auto;
+    filter:drop-shadow(0 4px 12px rgba(0,0,0,0.6));
+    opacity:0.95;
+    z-index:10;
+  }
+  .dish-wrap{
+    position:absolute;
+    left:50%;
+    top:52%;
+    transform:translate(-50%,-50%);
+    width:78%;
+    height:auto;
+    filter:drop-shadow(0 60px 80px rgba(0,0,0,0.65)) drop-shadow(0 20px 30px rgba(245,124,0,0.12));
+  }
+  .dish-wrap img{
+    width:100%;
+    height:auto;
+    display:block;
+  }
+  .bottom-text{
+    position:absolute;
+    bottom:60px;
+    left:50%;
+    transform:translateX(-50%);
+    font-family:'Montserrat',sans-serif;
+    font-size:18px;
+    font-weight:400;
+    letter-spacing:0.22em;
+    text-transform:uppercase;
+    color:#6B6258;
+    text-align:center;
+    z-index:10;
+  }
+  .bottom-text strong{
+    font-weight:600;
+    color:#3A2416;
+  }
+</style>
+</head>
+<body>
+<div class="stage">
+  <img class="logo" src="{{LOGO_URL}}" alt="Montaña Dorada">
+  <div class="dish-wrap">
+    <img src="{{DISH_URL}}" alt="{{DISH_ALT}}">
+  </div>
+  <div class="bottom-text">{{BOTTOM_TEXT}}</div>
+</div>
+</body>
+</html>

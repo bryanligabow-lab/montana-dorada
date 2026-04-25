@@ -1,0 +1,204 @@
+{
+  "name": "Montaña Dorada · Notificaciones WhatsApp",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "montana-notify",
+        "responseMode": "responseNode",
+        "options": {
+          "rawBody": false
+        }
+      },
+      "id": "webhook",
+      "name": "Webhook (Apps Script → n8n)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 320],
+      "webhookId": "montana-notify"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "auth-check",
+              "leftValue": "={{ $json.headers['x-webhook-secret'] }}",
+              "rightValue": "={{ $env.N8N_WEBHOOK_SECRET }}",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "auth",
+      "name": "Verificar secret",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [480, 320]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "id": "is-reminder",
+                    "leftValue": "={{ $json.body.type }}",
+                    "rightValue": "reminder_descansos",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "outputKey": "reminder"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "id": "is-informe",
+                    "leftValue": "={{ $json.body.type }}",
+                    "rightValue": "informe_final",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "outputKey": "informe"
+            }
+          ]
+        },
+        "options": { "fallbackOutput": "extra" }
+      },
+      "id": "switch",
+      "name": "Switch por tipo",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [720, 320]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Sos el asistente administrativo de Montaña Dorada (restaurante de asados/mariscos en Ecuador). Tu tarea: redactar un mensaje de WhatsApp CORTO (máx 4 líneas) para Dani Macas, jefe de cocina, recordándole cariñosa pero firmemente que registre en la plataforma los días de descanso de los trabajadores.\n\nContexto:\n- Hoy es: {{ $now.toFormat('cccc d LLLL') }}\n- Trigger automático: {{ $json.body.automatic }}\n- Nombre destinatario: {{ $json.body.recipient.nombre }}\n\nRequisitos del mensaje:\n- Tono cercano, tuteo ecuatoriano.\n- Empezar con su nombre.\n- Mencionar el link: https://TU-USUARIO.github.io/montana-dorada/ → sección Asistencia → Calendario.\n- Sin emojis excesivos, máximo 1 o 2.\n- Sin saludo formal, directo al grano.\n\nDevolvé SOLO el texto del mensaje, sin comillas ni prefijos."
+      },
+      "id": "ai-reminder",
+      "name": "AI: redactar reminder",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [960, 200]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Sos el asistente administrativo de Montaña Dorada. Tu tarea: redactar un mensaje de WhatsApp para Javier Carrión (dueño) con el informe del período {{ $json.body.period }}.\n\nData estructurada:\n{{ JSON.stringify($json.body.detail, null, 2) }}\n\nResumen ya prearmado:\n{{ $json.body.summary }}\n\nRequisitos:\n- Tono ejecutivo pero cercano, tuteo.\n- Usá formato WhatsApp (negritas con *asterisco*, listas con •).\n- Organizá en secciones: Totales / Por empleado / Descansos / Saldos.\n- Máximo 20 líneas.\n- Que sea informativo y fácil de leer en celular.\n\nDevolvé SOLO el texto del mensaje."
+      },
+      "id": "ai-informe",
+      "name": "AI: redactar informe",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [960, 440]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.EVOLUTION_API_URL }}/message/sendText/{{ $env.EVOLUTION_INSTANCE }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.EVOLUTION_API_KEY }}" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "number",
+              "value": "={{ $('Webhook (Apps Script → n8n)').item.json.body.recipient.numero }}"
+            },
+            { "name": "text", "value": "={{ $json.output }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "send-whatsapp",
+      "name": "Evolution API · sendText",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1220, 320]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { ok: true, sentTo: $('Webhook (Apps Script → n8n)').item.json.body.recipient.numero } }}"
+      },
+      "id": "respond-ok",
+      "name": "OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1460, 320]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseCode": 401,
+        "responseBody": "={{ { ok: false, error: 'unauthorized' } }}"
+      },
+      "id": "respond-401",
+      "name": "Unauthorized",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [720, 540]
+    }
+  ],
+  "connections": {
+    "Webhook (Apps Script → n8n)": {
+      "main": [[{ "node": "Verificar secret", "type": "main", "index": 0 }]]
+    },
+    "Verificar secret": {
+      "main": [
+        [{ "node": "Switch por tipo", "type": "main", "index": 0 }],
+        [{ "node": "Unauthorized", "type": "main", "index": 0 }]
+      ]
+    },
+    "Switch por tipo": {
+      "main": [
+        [{ "node": "AI: redactar reminder", "type": "main", "index": 0 }],
+        [{ "node": "AI: redactar informe", "type": "main", "index": 0 }]
+      ]
+    },
+    "AI: redactar reminder": {
+      "main": [[{ "node": "Evolution API · sendText", "type": "main", "index": 0 }]]
+    },
+    "AI: redactar informe": {
+      "main": [[{ "node": "Evolution API · sendText", "type": "main", "index": 0 }]]
+    },
+    "Evolution API · sendText": {
+      "main": [[{ "node": "OK", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "active": false,
+  "tags": [{ "name": "montana-dorada" }]
+}

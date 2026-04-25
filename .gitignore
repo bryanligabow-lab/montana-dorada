@@ -1,0 +1,17 @@
+node_modules/
+dist/
+.env
+.env.local
+.DS_Store
+*.log
+dashboard/node_modules/
+dashboard/dist/
+scripts/node_modules/
+scripts/.env
+scripts/google-sa.json
+
+# Local Claude settings — contienen API keys de uso personal
+.claude/settings.local.json
+
+# n8n workflows con credenciales embebidas
+n8n-workflow/*.json

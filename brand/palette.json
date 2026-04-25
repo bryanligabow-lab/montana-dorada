@@ -1,0 +1,68 @@
+{
+  "brand": {
+    "name": "Montaña Dorada",
+    "slogan": "Lo mejor en asados & mariscos",
+    "cuisine": "criolla/peruana mixta (asados, mariscos, parrilladas, platos criollos, alitas, costillas, ensaladas con camarón)",
+    "tone": "premium casual, auténtico, con fuerza de fuego/parrilla"
+  },
+  "palette": {
+    "negro_fondo":        "#0A0A0A",
+    "negro_profundo":     "#1A0F0A",
+    "marron_tostado":     "#3A2416",
+    "naranja_llama":      "#F57C00",
+    "naranja_brasa":      "#E65100",
+    "rojo_fuego":         "#D32F2F",
+    "dorado_calido":      "#FFB347",
+    "dorado_brillo":      "#FFD27F",
+    "blanco_hueso":       "#F5F1EA",
+    "blanco_puro":        "#FFFFFF",
+    "gris_humo":          "#6B6258"
+  },
+  "palette_usage": {
+    "fondos_oscuros":     ["#0A0A0A", "#1A0F0A"],
+    "acentos_calidos":    ["#F57C00", "#D32F2F", "#FFB347"],
+    "texto_claro":        ["#F5F1EA", "#FFFFFF"],
+    "texto_acento":       ["#FFB347", "#F57C00"]
+  },
+  "forbidden_colors": [
+    "azul eléctrico", "verde neón", "rosa fucsia", "morado saturado",
+    "cualquier color fuera de la paleta oficial"
+  ],
+  "fonts": {
+    "imports": "https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Oswald:wght@400;600;700&family=Anton&family=Montserrat:wght@200;300;400;500;600;700;900&family=Inter:wght@200;300;400;500;600;800&family=Allura&family=Dancing+Script:wght@400;700&family=Great+Vibes&display=swap",
+    "display_condensed":  ["Bebas Neue", "Oswald 700", "Anton"],
+    "script_cursiva":     ["Allura", "Great Vibes", "Dancing Script"],
+    "body_sans":          ["Inter", "Montserrat"],
+    "forbidden":          ["Playfair Display", "Bodoni Moda", "Cormorant Garamond", "Comic Sans", "cualquier serif editorial tipo revista"]
+  },
+  "slogan_templates": {
+    "pattern": "Lo mejor, EN {CATEGORIA}.",
+    "categorias_validas": [
+      "ASADOS", "MARISCOS", "PARRILLADAS", "CEVICHES", "COSTILLAS",
+      "ALITAS", "LANGOSTINOS", "PLATOS CRIOLLOS", "CORTES", "ARROCES"
+    ],
+    "style": "script cursiva 'Lo mejor,' + sans condensed bold uppercase '{CATEGORIA}.', color blanco #FFFFFF, drop-shadow sutil rgba(0,0,0,0.4)"
+  },
+  "logo": {
+    "file_original":   "logo-original.png",
+    "file_cutout":     "logo-cutout.png",
+    "file_small":      "logo-small.png",
+    "file_monochrome_white": "logo-white.png",
+    "file_monochrome_gold":  "logo-gold.png",
+    "placement_default": "top-center, 130-170px width en pieza 1080",
+    "drop_shadow": "drop-shadow(0 4px 12px rgba(0,0,0,0.5))"
+  },
+  "formats": {
+    "post_instagram_cuadrado": { "width": 1080, "height": 1080, "deviceScaleFactor": 2 },
+    "post_instagram_vertical": { "width": 1080, "height": 1350, "deviceScaleFactor": 2 },
+    "historia_instagram":      { "width": 1080, "height": 1920, "deviceScaleFactor": 2 },
+    "banner_facebook":         { "width": 1920, "height": 1080, "deviceScaleFactor": 2 },
+    "carta_menu_a4":           { "width": 2480, "height": 3508, "deviceScaleFactor": 1, "dpi": 300 }
+  },
+  "contact_default": {
+    "telefono": "",
+    "whatsapp": "",
+    "direccion": "",
+    "instagram": "@montanadorada"
+  }
+}

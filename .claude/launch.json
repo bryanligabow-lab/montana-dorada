@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "dashboard",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "dashboard", "run", "dev"],
+      "port": 5173
+    },
+    {
+      "name": "menu-html",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["serve", "/Users/Bryan/Downloads", "-p", "8899", "--no-clipboard"],
+      "port": 8899
+    }
+  ]
+}

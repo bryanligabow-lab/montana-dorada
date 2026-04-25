@@ -1,0 +1,22 @@
+{
+  "name": "montana-dorada-scripts",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Scripts one-shot para poblar Supabase con el catálogo de platos de Montaña Dorada.",
+  "scripts": {
+    "ingest": "node drive-ingest.mjs",
+    "enhance": "node enhance-batch.mjs"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.21.0",
+    "@supabase/supabase-js": "^2.45.0",
+    "dotenv": "^16.4.5",
+    "googleapis": "^144.0.0",
+    "heic-convert": "^2.1.0",
+    "openai": "^4.70.0",
+    "sharp": "^0.33.5"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

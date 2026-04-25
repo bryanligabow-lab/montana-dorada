@@ -1,0 +1,139 @@
+<!--
+  TEMPLATE B — AMBIENT CINEMATIC (estilo Restful Restobar)
+
+  Variables a reemplazar:
+    {{WIDTH}} {{HEIGHT}} {{LOGO_URL}} {{DISH_URL}} {{DISH_ALT}}
+    {{BOKEH_URL}}       — URL de foto de ambiente desenfocada (opcional; si no hay, usa gradient)
+    {{LABEL_LINE1}}     — texto inferior línea 1 (ej: "RESERVAS / DOMICILIO:")
+    {{LABEL_LINE2}}     — texto inferior línea 2 con ícono teléfono (ej: "0981329458")
+
+  Características:
+    - Fondo oscuro cálido con bokeh (desenfoque)
+    - Plato en primer plano con sharpen y vignette
+    - Logo top-center pequeño
+    - Texto inferior con ícono
+-->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{width:{{WIDTH}}px;height:{{HEIGHT}}px;overflow:hidden;}
+  body{
+    font-family:'Inter',sans-serif;
+    color:#F5F1EA;
+    background:#0A0A0A;
+  }
+  .stage{
+    position:relative;
+    width:{{WIDTH}}px;
+    height:{{HEIGHT}}px;
+    overflow:hidden;
+    background:#0A0A0A;
+  }
+  .bokeh{
+    position:absolute;
+    inset:0;
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    filter:blur(24px) saturate(0.85) brightness(0.55);
+    transform:scale(1.15);
+  }
+  .vignette{
+    position:absolute;
+    inset:0;
+    background:
+      radial-gradient(ellipse 70% 70% at 50% 55%, transparent 30%, rgba(10,10,10,0.75) 90%),
+      linear-gradient(180deg, rgba(10,10,10,0.55) 0%, transparent 30%, transparent 65%, rgba(10,10,10,0.85) 100%);
+    z-index:2;
+  }
+  .logo{
+    position:absolute;
+    top:55px;
+    left:50%;
+    transform:translateX(-50%);
+    width:140px;
+    height:auto;
+    filter:drop-shadow(0 4px 14px rgba(0,0,0,0.75));
+    opacity:0.95;
+    z-index:10;
+  }
+  .dish-wrap{
+    position:absolute;
+    left:50%;
+    bottom:16%;
+    transform:translateX(-50%);
+    width:92%;
+    filter:drop-shadow(0 40px 60px rgba(0,0,0,0.8)) contrast(1.04) saturate(1.08);
+    z-index:5;
+  }
+  .dish-wrap img{
+    width:100%;
+    height:auto;
+    display:block;
+  }
+  .label{
+    position:absolute;
+    bottom:50px;
+    left:50%;
+    transform:translateX(-50%);
+    text-align:center;
+    z-index:10;
+  }
+  .label .line1{
+    font-family:'Inter',sans-serif;
+    font-size:22px;
+    font-weight:500;
+    letter-spacing:0.3em;
+    text-transform:uppercase;
+    color:#F5F1EA;
+    margin-bottom:8px;
+  }
+  .label .line2{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:10px;
+    font-family:'Montserrat',sans-serif;
+    font-size:22px;
+    font-weight:600;
+    letter-spacing:0.08em;
+    color:#F5F1EA;
+  }
+  .label .line2 .dot{
+    display:inline-block;
+    width:30px;
+    height:30px;
+    border-radius:50%;
+    background:#D32F2F;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    font-size:16px;
+  }
+  .label .line2 .dot::before{
+    content:"\260E";
+    color:#FFFFFF;
+    font-size:16px;
+  }
+</style>
+</head>
+<body>
+<div class="stage">
+  <img class="bokeh" src="{{BOKEH_URL}}" alt="">
+  <div class="vignette"></div>
+  <img class="logo" src="{{LOGO_URL}}" alt="Montaña Dorada">
+  <div class="dish-wrap">
+    <img src="{{DISH_URL}}" alt="{{DISH_ALT}}">
+  </div>
+  <div class="label">
+    <div class="line1">{{LABEL_LINE1}}</div>
+    <div class="line2"><span class="dot"></span> {{LABEL_LINE2}}</div>
+  </div>
+</div>
+</body>
+</html>
