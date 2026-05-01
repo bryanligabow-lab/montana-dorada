@@ -20,6 +20,7 @@ export const descansoColor: Record<DescansoTipo, string> = {
   VACACIONES: 'bg-doradoBrillo text-bgDeep',
   PERMISO: 'bg-llama text-hueso',
   ENFERMEDAD: 'bg-fuego text-hueso',
+  ASISTIO_SIN_REGISTRO: 'bg-emerald-600 text-hueso',
 };
 
 export const descansoLabel: Record<DescansoTipo, string> = {
@@ -27,4 +28,5 @@ export const descansoLabel: Record<DescansoTipo, string> = {
   VACACIONES: 'Vacaciones',
   PERMISO: 'Permiso',
   ENFERMEDAD: 'Enfermedad',
+  ASISTIO_SIN_REGISTRO: 'Asistió s/ registro',
 };

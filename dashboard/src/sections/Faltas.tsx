@@ -12,6 +12,8 @@ import { DescansoForm } from '../components/DescansoForm';
 import { Badge } from '../components/ui/Badge';
 import {
   useAsistencia,
+  useCreateDescanso,
+  useDeleteDescanso,
   useDeleteFalta,
   useDescansos,
   useEmpleados,
@@ -21,10 +23,10 @@ import {
   usePuntualidad,
 } from '../lib/queries';
 import { computeNominaMes } from '../lib/analytics';
-import { fmtDate, fmtMoney } from '../lib/format';
+import { descansoLabel, fmtDate, fmtMoney } from '../lib/format';
 import { useAuth } from '../lib/useAuth';
 import { isBackendConfigured } from '../lib/config';
-import type { Falta } from '../lib/types';
+import type { Descanso, Falta } from '../lib/types';
 
 export function Faltas() {
   const empleados = useEmpleados();
@@ -35,12 +37,20 @@ export function Faltas() {
   const puntualidad = usePuntualidad();
   const asistencia = useAsistencia();
   const del = useDeleteFalta();
+  const createDesc = useCreateDescanso();
+  const deleteDesc = useDeleteDescanso();
   const { can } = useAuth();
   const [mes, setMes] = useState(() => new Date());
   const [empId, setEmpId] = useState('');
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Falta | null>(null);
   const [deleting, setDeleting] = useState<Falta | null>(null);
+  const [deletingDesc, setDeletingDesc] = useState<Descanso | null>(null);
+  const [markingPresent, setMarkingPresent] = useState<{
+    empId: string;
+    nombre: string;
+    fecha: Date;
+  } | null>(null);
   const [convertingToDescanso, setConvertingToDescanso] = useState<{
     empId: string;
     nombre: string;
@@ -132,6 +142,24 @@ export function Faltas() {
 
   const canWrite = can('falta.create');
   const canDescanso = can('descanso.create');
+  // "Asistió sin registrar" + reversibilidad: solo admin (`*`).
+  const isAdmin = can('admin');
+
+  // Descansos del mes (todos los tipos), filtrados por empleado si aplica.
+  // Esto sirve como vista de "marcados manualmente" con opción de eliminar
+  // para revertir cualquier conversión hecha desde esta sección.
+  const descansosMes = useMemo(() => {
+    if (!descansos.data) return [];
+    const start = startOfMonth(mes);
+    const end = endOfMonth(mes);
+    return descansos.data
+      .filter((d) => {
+        if (!isWithinInterval(d.fecha, { start, end })) return false;
+        if (empId && d.id !== empId) return false;
+        return true;
+      })
+      .sort((a, b) => b.fecha.getTime() - a.fecha.getTime());
+  }, [descansos.data, mes, empId]);
 
   return (
     <div>
@@ -209,7 +237,20 @@ export function Faltas() {
                     )}
                   </td>
                   <td className="px-4 py-2 text-right">
-                    <div className="inline-flex gap-1">
+                    <div className="inline-flex gap-1 flex-wrap justify-end">
+                      {isAdmin && r.tipo === 'auto-falta' && (
+                        <button
+                          type="button"
+                          className="text-[11px] px-2 py-1 rounded bg-emerald-700/30 text-emerald-300 hover:bg-emerald-700/50 disabled:opacity-50"
+                          onClick={() =>
+                            setMarkingPresent({ empId: r.empId, nombre: r.nombre, fecha: r.fecha })
+                          }
+                          disabled={!isBackendConfigured() || createDesc.isPending}
+                          title="Asistió pero olvidó registrar (no descuenta, no consume cuota)"
+                        >
+                          ✓ Asistió sin registrar
+                        </button>
+                      )}
                       {canDescanso && r.tipo === 'auto-falta' && (
                         <button
                           type="button"
@@ -231,6 +272,68 @@ export function Faltas() {
                         </button>
                       )}
                     </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </section>
+
+      <section className="card overflow-hidden mb-6">
+        <div className="px-4 py-3 border-b border-tostado/40 flex items-center justify-between">
+          <div className="font-display text-lg tracking-widest text-hueso">
+            DESCANSOS DEL MES ({descansosMes.length})
+          </div>
+          <div className="text-hueso/40 text-xs">
+            Reversibilidad · eliminá un descanso para que el día vuelva a contarse como auto-falta
+          </div>
+        </div>
+        {descansos.isLoading ? (
+          <div className="p-4"><SkeletonRows rows={3} cols={4} /></div>
+        ) : descansosMes.length === 0 ? (
+          <div className="p-6 text-center text-hueso/50 text-sm">
+            Sin descansos registrados en el período.
+          </div>
+        ) : (
+          <table className="w-full text-sm">
+            <thead className="text-hueso/50 text-xs uppercase tracking-wider">
+              <tr>
+                <th className="text-left px-4 py-2">Fecha</th>
+                <th className="text-left px-4 py-2">Empleado</th>
+                <th className="text-left px-4 py-2">Tipo</th>
+                <th className="text-left px-4 py-2">Motivo</th>
+                <th className="text-right px-4 py-2 w-32">Acciones</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-tostado/30">
+              {descansosMes.map((d) => (
+                <tr key={d.rowId} className="hover:bg-tostado/20">
+                  <td className="px-4 py-2 text-hueso">{fmtDate(d.fecha)}</td>
+                  <td className="px-4 py-2">
+                    <div className="font-mono text-dorado text-xs">{d.id}</div>
+                    <div className="text-hueso">{d.nombre}</div>
+                  </td>
+                  <td className="px-4 py-2 text-hueso/80 text-xs">
+                    {descansoLabel[d.tipo]}
+                    {d.tipo === 'ASISTIO_SIN_REGISTRO' && (
+                      <span className="ml-2 text-emerald-400/80">(no descuenta · no consume cuota)</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-2 text-hueso/70 text-xs">{d.motivo || '—'}</td>
+                  <td className="px-4 py-2 text-right">
+                    {canDescanso ? (
+                      <button
+                        type="button"
+                        className="btn-ghost text-xs text-fuego"
+                        onClick={() => setDeletingDesc(d)}
+                        title="Eliminar (revertir)"
+                      >
+                        🗑 Revertir
+                      </button>
+                    ) : (
+                      <span className="text-hueso/30 text-xs">sin permiso</span>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -354,6 +457,48 @@ export function Faltas() {
           try {
             await del.mutateAsync(deleting.rowId);
             setDeleting(null);
+          } catch { /* noop */ }
+        }}
+      />
+      <ConfirmDialog
+        isOpen={!!markingPresent}
+        onClose={() => setMarkingPresent(null)}
+        title="Marcar asistió sin registrar"
+        message={
+          markingPresent
+            ? `Confirmar que ${markingPresent.nombre} sí trabajó el ${fmtDate(markingPresent.fecha)} pero olvidó marcar entrada/salida. No se descontará y no consume cuota de descansos.`
+            : ''
+        }
+        loading={createDesc.isPending}
+        onConfirm={async () => {
+          if (!markingPresent) return;
+          try {
+            await createDesc.mutateAsync({
+              id: markingPresent.empId,
+              nombre: markingPresent.nombre,
+              fecha: markingPresent.fecha,
+              tipo: 'ASISTIO_SIN_REGISTRO',
+              motivo: 'Olvidó registrar asistencia',
+            });
+            setMarkingPresent(null);
+          } catch { /* noop */ }
+        }}
+      />
+      <ConfirmDialog
+        isOpen={!!deletingDesc}
+        onClose={() => setDeletingDesc(null)}
+        title="Revertir descanso"
+        message={
+          deletingDesc
+            ? `¿Eliminar el descanso (${descansoLabel[deletingDesc.tipo]}) de ${deletingDesc.nombre} del ${fmtDate(deletingDesc.fecha)}? El día volverá a evaluarse como auto-falta o auto-descanso.`
+            : ''
+        }
+        loading={deleteDesc.isPending}
+        onConfirm={async () => {
+          if (!deletingDesc?.rowId) return;
+          try {
+            await deleteDesc.mutateAsync(deletingDesc.rowId);
+            setDeletingDesc(null);
           } catch { /* noop */ }
         }}
       />

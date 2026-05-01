@@ -182,10 +182,12 @@ export function computeNominaMes(
     // Cuota: cada empleado tiene 4 días libres al mes. Los descansos
     // planificados ya se cuentan, así que la cuota efectiva restante es
     // 4 - (descansos planificados PLANIFICADO/PERMISO/VACACIONES/ENFERMEDAD).
+    // ASISTIO_SIN_REGISTRO NO consume cuota: el empleado vino, solo olvidó
+    // marcar — cuenta como día trabajado normal.
     // Hasta llenar la cuota, los días ausentes son "descanso automático"
     // (no descuentan). El resto son auto-faltas que sí descuentan.
     var QUOTA_DESCANSOS_MES = 4;
-    var descansosUsados = mesDesc.length;
+    var descansosUsados = mesDesc.filter((d) => d.tipo !== 'ASISTIO_SIN_REGISTRO').length;
     var cuotaRestante = Math.max(0, QUOTA_DESCANSOS_MES - descansosUsados);
     var autoDescansosFechas = ausentesFechas.slice(0, cuotaRestante);
     var autoFaltasFechas = ausentesFechas.slice(cuotaRestante);
@@ -211,6 +213,7 @@ export function computeNominaMes(
       VACACIONES: 0,
       PERMISO: 0,
       ENFERMEDAD: 0,
+      ASISTIO_SIN_REGISTRO: 0,
     };
     for (const d of mesDesc) descansosPorTipo[d.tipo]++;
 

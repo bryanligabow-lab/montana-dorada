@@ -23,7 +23,13 @@ export interface Pago {
   rowId?: string;
 }
 
-export type DescansoTipo = 'PLANIFICADO' | 'VACACIONES' | 'PERMISO' | 'ENFERMEDAD';
+export type DescansoTipo =
+  | 'PLANIFICADO'
+  | 'VACACIONES'
+  | 'PERMISO'
+  | 'ENFERMEDAD'
+  /** Asistió pero olvidó registrar entrada/salida. No descuenta y no consume cuota. */
+  | 'ASISTIO_SIN_REGISTRO';
 
 export interface Descanso {
   rowId: string;

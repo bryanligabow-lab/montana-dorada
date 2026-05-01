@@ -10,7 +10,13 @@ import type { Descanso, DescansoTipo, Empleado } from '../lib/types';
 import { descansoLabel } from '../lib/format';
 import { PersonPicker } from './PersonPicker';
 
-const TIPOS: DescansoTipo[] = ['PLANIFICADO', 'VACACIONES', 'PERMISO', 'ENFERMEDAD'];
+const TIPOS: DescansoTipo[] = [
+  'PLANIFICADO',
+  'VACACIONES',
+  'PERMISO',
+  'ENFERMEDAD',
+  'ASISTIO_SIN_REGISTRO',
+];
 
 export function DescansoForm({
   empleados,

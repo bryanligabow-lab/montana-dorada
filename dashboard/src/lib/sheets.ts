@@ -295,7 +295,7 @@ export async function fetchDescansos(): Promise<Descanso[]> {
     return [];
   }
   const allowed = new Set<DescansoTipo>([
-    'PLANIFICADO', 'VACACIONES', 'PERMISO', 'ENFERMEDAD',
+    'PLANIFICADO', 'VACACIONES', 'PERMISO', 'ENFERMEDAD', 'ASISTIO_SIN_REGISTRO',
   ]);
   const out: Descanso[] = [];
   for (const r of rows) {

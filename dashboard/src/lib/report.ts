@@ -91,6 +91,7 @@ export function buildInforme(
     VACACIONES: 0,
     PERMISO: 0,
     ENFERMEDAD: 0,
+    ASISTIO_SIN_REGISTRO: 0,
   };
   for (const d of descansos) {
     if (!isSameMonth(d.fecha, refDate)) continue;
