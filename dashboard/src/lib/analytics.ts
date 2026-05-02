@@ -398,8 +398,8 @@ const DOW_NAMES = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábad
 /**
  * Construye el mensaje de WhatsApp para el jefe con:
  *  - Saludo
- *  - Lista de descansos de la semana en curso (con tipo)
- *  - Para cada día de la semana: quiénes trabajan (= activos sin descanso ese día)
+ *  - Lista de descansos de la *próxima* semana (lun-dom siguiente al refDate)
+ *  - Para cada día de esa semana: quiénes trabajan (= activos sin descanso)
  *  - Faltas/extras útiles del mes en curso
  */
 export function buildInformeJefe(
@@ -409,7 +409,10 @@ export function buildInformeJefe(
   refDate: Date = new Date(),
 ): string {
   const activos = empleados.filter((e) => e.estado === 'ACTIVO');
-  const { start, end, days } = weekRange(refDate);
+  // Apuntar a la PRÓXIMA semana (lunes siguiente al ISO-week actual).
+  const nextWeekRef = new Date(refDate);
+  nextWeekRef.setDate(nextWeekRef.getDate() + 7);
+  const { start, end, days } = weekRange(nextWeekRef);
 
   const descSemana = descansos
     .filter((d) => isWithinInterval(d.fecha, { start, end }))
@@ -420,12 +423,12 @@ export function buildInformeJefe(
   lines.push('👋 Hola jefe, buen día.');
   lines.push('');
   lines.push(
-    `📋 *Informe semanal* (${format(start, 'dd/MM')} – ${format(end, 'dd/MM/yyyy')})`,
+    `📋 *Informe próxima semana* (${format(start, 'dd/MM')} – ${format(end, 'dd/MM/yyyy')})`,
   );
   lines.push('');
 
   // Sección 1: Descansos de la semana
-  lines.push('🌴 *Descansos esta semana:*');
+  lines.push('🌴 *Descansos próxima semana:*');
   if (descSemana.length === 0) {
     lines.push('   _Nadie tiene descanso registrado._');
   } else {
