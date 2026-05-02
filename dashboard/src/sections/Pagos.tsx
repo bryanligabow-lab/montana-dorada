@@ -83,7 +83,7 @@ export function Pagos() {
             Sin pagos para el filtro seleccionado.
           </div>
         ) : (
-          <table className="w-full text-sm">
+          <div className="table-wrap"><table className="w-full text-sm">
             <thead className="text-hueso/50 text-xs uppercase tracking-wider">
               <tr>
                 <th className="text-left px-4 py-2">Fecha</th>
@@ -149,7 +149,7 @@ export function Pagos() {
                 <td />
               </tr>
             </tfoot>
-          </table>
+          </table></div>
         )}
       </section>
 

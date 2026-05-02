@@ -78,7 +78,7 @@ export function Extras() {
             Sin extras registrados en el período.
           </div>
         ) : (
-          <table className="w-full text-sm">
+          <div className="table-wrap"><table className="w-full text-sm">
             <thead className="text-hueso/50 text-xs uppercase tracking-wider">
               <tr>
                 <th className="text-left px-4 py-2">Fecha</th>
@@ -136,7 +136,7 @@ export function Extras() {
                 <td />
               </tr>
             </tfoot>
-          </table>
+          </table></div>
         )}
       </section>
 

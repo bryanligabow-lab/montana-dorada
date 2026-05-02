@@ -138,7 +138,7 @@ export function Multas() {
             Sin registros para el período seleccionado.
           </div>
         ) : (
-          <table className="w-full text-sm">
+          <div className="table-wrap"><table className="w-full text-sm">
             <thead className="text-hueso/50 text-xs uppercase tracking-wider">
               <tr>
                 <th className="text-left px-4 py-2">Empleado</th>
@@ -183,7 +183,7 @@ export function Multas() {
                 );
               })}
             </tbody>
-          </table>
+          </table></div>
         )}
       </section>
 
@@ -194,7 +194,7 @@ export function Multas() {
         {filtered.length === 0 ? (
           <div className="p-8 text-center text-hueso/50 text-sm">Sin registros.</div>
         ) : (
-          <table className="w-full text-sm">
+          <div className="table-wrap"><table className="w-full text-sm">
             <thead className="text-hueso/50 text-xs uppercase tracking-wider">
               <tr>
                 <th className="text-left px-4 py-2">Fecha</th>
@@ -232,7 +232,7 @@ export function Multas() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         )}
       </section>
     </div>

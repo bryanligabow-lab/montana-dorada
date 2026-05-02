@@ -204,7 +204,7 @@ export function Faltas() {
             Sin días detectados como ausencia automática.
           </div>
         ) : (
-          <table className="w-full text-sm">
+          <div className="table-wrap"><table className="w-full text-sm">
             <thead className="text-hueso/50 text-xs uppercase tracking-wider">
               <tr>
                 <th className="text-left px-4 py-2">Fecha</th>
@@ -276,7 +276,7 @@ export function Faltas() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         )}
       </section>
 
@@ -296,7 +296,7 @@ export function Faltas() {
             Sin descansos registrados en el período.
           </div>
         ) : (
-          <table className="w-full text-sm">
+          <div className="table-wrap"><table className="w-full text-sm">
             <thead className="text-hueso/50 text-xs uppercase tracking-wider">
               <tr>
                 <th className="text-left px-4 py-2">Fecha</th>
@@ -338,7 +338,7 @@ export function Faltas() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         )}
       </section>
 
@@ -353,7 +353,7 @@ export function Faltas() {
             Sin faltas manuales registradas en el período.
           </div>
         ) : (
-          <table className="w-full text-sm">
+          <div className="table-wrap"><table className="w-full text-sm">
             <thead className="text-hueso/50 text-xs uppercase tracking-wider">
               <tr>
                 <th className="text-left px-4 py-2">Fecha</th>
@@ -402,7 +402,7 @@ export function Faltas() {
                 <td />
               </tr>
             </tfoot>
-          </table>
+          </table></div>
         )}
       </section>
 

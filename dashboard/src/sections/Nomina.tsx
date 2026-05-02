@@ -121,7 +121,7 @@ export function Nomina() {
         ) : resumen.length === 0 ? (
           <div className="p-8 text-center text-hueso/50 text-sm">Sin empleados activos.</div>
         ) : (
-          <table className="w-full text-sm">
+          <div className="table-wrap"><table className="w-full text-sm">
             <thead className="text-hueso/50 text-xs uppercase tracking-wider">
               <tr>
                 <th className="text-left px-3 py-2">Empleado</th>
@@ -288,7 +288,7 @@ export function Nomina() {
                 );
               })}
             </tbody>
-          </table>
+          </table></div>
         )}
       </section>
     </div>

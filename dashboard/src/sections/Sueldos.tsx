@@ -60,7 +60,7 @@ export function Sueldos() {
         ) : activos.length === 0 ? (
           <div className="p-6 text-hueso/50 text-sm">Sin empleados activos.</div>
         ) : (
-          <table className="w-full text-sm">
+          <div className="table-wrap"><table className="w-full text-sm">
             <thead className="text-hueso/50 text-xs uppercase tracking-wider">
               <tr>
                 <th className="text-left px-4 py-2">Código</th>
@@ -81,7 +81,7 @@ export function Sueldos() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         )}
       </section>
 

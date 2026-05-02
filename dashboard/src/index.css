@@ -41,7 +41,7 @@ body {
     @apply bg-bgDeep/80 border border-tostado/60 rounded-xl shadow-card backdrop-blur-sm;
   }
   .btn-primary {
-    @apply px-4 py-2 rounded-lg font-semibold bg-grad-fire text-white hover:brightness-110 transition;
+    @apply px-4 py-2.5 rounded-lg font-semibold bg-grad-fire text-white hover:brightness-110 transition;
   }
   .btn-ghost {
     @apply px-3 py-2 rounded-lg text-hueso/80 hover:bg-tostado/40 transition;
@@ -50,9 +50,26 @@ body {
     @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium;
   }
   .kpi-value {
-    @apply font-display tracking-wide text-4xl text-dorado;
+    @apply font-display tracking-wide text-3xl md:text-4xl text-dorado;
   }
   .section-title {
-    @apply font-display text-3xl tracking-widest text-hueso;
+    @apply font-display text-2xl md:text-3xl tracking-widest text-hueso;
+  }
+  /* Wrapper para tablas anchas: scroll horizontal en móvil sin romper desktop. */
+  .table-wrap {
+    @apply overflow-x-auto;
+  }
+  .table-wrap > table {
+    @apply min-w-[640px];
+  }
+}
+
+/* Inputs y selects más altos para tap target en móvil. */
+@media (max-width: 767px) {
+  input,
+  select,
+  textarea,
+  button {
+    font-size: 16px; /* evita zoom auto en iOS */
   }
 }

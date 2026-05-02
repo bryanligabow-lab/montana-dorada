@@ -12,6 +12,7 @@ import { Multas } from './sections/Multas';
 import { Nomina } from './sections/Nomina';
 import { Sueldos } from './sections/Sueldos';
 import { Empleados } from './sections/Empleados';
+import { BRAND } from './lib/config';
 
 export type SectionKey =
   | 'resumen'
@@ -35,10 +36,35 @@ const queryClient = new QueryClient({
 
 function Shell() {
   const [active, setActive] = useState<SectionKey>('resumen');
+  const [navOpen, setNavOpen] = useState(false);
   return (
-    <div className="min-h-screen flex bg-grad-dark">
-      <Sidebar active={active} onChange={setActive} />
-      <main className="flex-1 p-6 md:p-8 max-w-full overflow-hidden">
+    <div className="min-h-screen md:flex bg-grad-dark">
+      <Sidebar
+        active={active}
+        onChange={setActive}
+        open={navOpen}
+        onClose={() => setNavOpen(false)}
+      />
+      {/* Topbar móvil */}
+      <header className="md:hidden sticky top-0 z-30 bg-bgDeep/90 backdrop-blur-sm border-b border-tostado/40 flex items-center gap-3 px-4 py-3">
+        <button
+          type="button"
+          className="text-hueso text-2xl leading-none px-1"
+          onClick={() => setNavOpen(true)}
+          aria-label="Abrir menú"
+        >
+          ☰
+        </button>
+        <img
+          src="./logo.jpg"
+          alt=""
+          className="w-8 h-8 rounded-full object-cover border border-dorado/50"
+        />
+        <div className="font-display text-base tracking-widest text-hueso truncate">
+          {BRAND.name}
+        </div>
+      </header>
+      <main className="flex-1 p-4 md:p-8 max-w-full overflow-x-hidden">
         <div className="mb-4">
           <PrivacyBanner />
         </div>
