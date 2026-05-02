@@ -242,6 +242,12 @@ export async function fetchPagos(): Promise<Pago[]> {
     const fecha = parseGvizDate(row['FECHA']);
     if (!fecha) continue;
     const rowId = str(row['ROW_ID']).trim();
+    // Período de nómina: si la columna existe y trae valor, lo usamos.
+    // Si no, fallback al mes de la fecha (backward-compatible).
+    const periodoRaw = str(row['PERIODO_NOMINA']).trim();
+    const periodo =
+      periodoRaw ||
+      `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}`;
     out.push({
       id,
       nombre: str(row['NOMBRE']).trim(),
@@ -251,6 +257,7 @@ export async function fetchPagos(): Promise<Pago[]> {
       monto: numOrZero(row['MONTO']),
       timestamp: parseGvizDate(row['TIMESTAMP']),
       rowId: rowId || undefined,
+      periodoNomina: periodo,
     });
   }
   // Orden descendente por fecha

@@ -139,10 +139,21 @@ export function computeNominaMes(
   const lastDay = today < mEnd ? today : mEnd;
   const allDays = eachDayOfInterval({ start: mStart, end: lastDay });
 
+  // Período de la nómina objetivo (yyyy-MM)
+  const targetPeriod = format(refDate, 'yyyy-MM');
+
   return activos.map((e) => {
     const mesFaltas = filterMonth(faltas, refDate).filter((f) => f.id === e.id);
     const mesExtras = filterMonth(extras, refDate).filter((x) => x.id === e.id);
-    const mesPagos = filterMonth(pagosPlataforma, refDate).filter((p) => p.id === e.id);
+    // Pagos imputados al período de esta nómina (no necesariamente con
+    // fecha en este mes — un pago hecho hoy puede saldar abril).
+    const mesPagos = pagosPlataforma.filter((p) => {
+      if (p.id !== e.id) return false;
+      const periodo =
+        p.periodoNomina ||
+        `${p.fecha.getFullYear()}-${String(p.fecha.getMonth() + 1).padStart(2, '0')}`;
+      return periodo === targetPeriod;
+    });
     const mesDesc = filterMonth(descansos, refDate).filter((d) => d.id === e.id);
     const mesPunt = filterMonth(puntualidad, refDate).filter((p) => p.id === e.id);
     const mesAsis = filterMonth(asistencia, refDate).filter(
@@ -387,6 +398,80 @@ export function pagosByDayLast30(pagos: Pago[], now: Date = new Date()): {
     const key = format(d, 'yyyy-MM-dd');
     return { fecha: format(d, 'dd MMM'), total: out.get(key) ?? 0 };
   });
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Deudas de nómina por período (yyyy-MM)
+// ────────────────────────────────────────────────────────────────────────────
+
+export type EstadoPagoNomina = 'PENDIENTE' | 'PARCIAL' | 'PAGADO';
+
+export interface DeudaPeriodo {
+  empleadoId: string;
+  nombre: string;
+  periodo: string; // yyyy-MM
+  baseMensual: number;
+  extras: number;
+  descuentoFaltas: number;
+  multasGanadas: number;
+  netoMes: number; // base + extras - faltas - multas
+  totalPagado: number; // suma de pagos imputados a este período
+  saldo: number; // netoMes - totalPagado (puede ser negativo si hay sobrepago)
+  estado: EstadoPagoNomina;
+}
+
+/**
+ * Calcula deudas/pagos por período para los últimos `monthsBack` meses
+ * (incluyendo el actual). Útil para mostrar la vista "Por período de
+ * nómina" en la sección Pagos y la columna de estado en Nómina.
+ */
+export function computeDeudasPorPeriodo(
+  refDate: Date,
+  monthsBack: number,
+  empleados: Empleado[],
+  pagos: Pago[],
+  descansos: Descanso[],
+  faltas: Falta[],
+  extras: Extra[],
+  puntualidad: Puntualidad[] = [],
+  asistencia: Asistencia[] = [],
+): DeudaPeriodo[] {
+  const out: DeudaPeriodo[] = [];
+  for (let i = 0; i < monthsBack; i++) {
+    const ref = new Date(refDate.getFullYear(), refDate.getMonth() - i, 1);
+    const periodo = format(ref, 'yyyy-MM');
+    const nomina = computeNominaMes(
+      ref,
+      empleados,
+      pagos,
+      descansos,
+      faltas,
+      extras,
+      puntualidad,
+      asistencia,
+    );
+    for (const r of nomina) {
+      const saldo = Math.round((r.netoMes - r.totalPagado) * 100) / 100;
+      let estado: EstadoPagoNomina = 'PENDIENTE';
+      if (r.totalPagado <= 0) estado = 'PENDIENTE';
+      else if (saldo <= 0.01) estado = 'PAGADO';
+      else estado = 'PARCIAL';
+      out.push({
+        empleadoId: r.empleadoId,
+        nombre: r.nombre,
+        periodo,
+        baseMensual: r.baseMensual,
+        extras: r.extras,
+        descuentoFaltas: r.descuentoFaltas,
+        multasGanadas: r.multasGanadas,
+        netoMes: r.netoMes,
+        totalPagado: r.totalPagado,
+        saldo,
+        estado,
+      });
+    }
+  }
+  return out;
 }
 
 // ────────────────────────────────────────────────────────────────────────────

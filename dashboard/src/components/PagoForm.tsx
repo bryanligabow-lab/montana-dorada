@@ -10,11 +10,17 @@ export function PagoForm({
   empleados,
   initial,
   defaultEmpleadoId,
+  defaultPeriodoNomina,
+  defaultTipoPago,
+  defaultMonto,
   onDone,
 }: {
   empleados: Empleado[];
   initial?: Pago;
   defaultEmpleadoId?: string;
+  defaultPeriodoNomina?: string;
+  defaultTipoPago?: string;
+  defaultMonto?: string;
   onDone: () => void;
 }) {
   const isEdit = !!initial?.rowId;
@@ -31,10 +37,19 @@ export function PagoForm({
   const [hora, setHora] = useState(() =>
     initial?.hora || format(new Date(), 'HH:mm:ss'),
   );
-  const [tipoPago, setTipoPago] = useState(() => initial?.tipoPago || 'ANTICIPO');
-  const [monto, setMonto] = useState<string>(() =>
-    initial ? String(initial.monto) : '',
+  const [tipoPago, setTipoPago] = useState(
+    () => initial?.tipoPago || defaultTipoPago || 'ANTICIPO',
   );
+  const [monto, setMonto] = useState<string>(() =>
+    initial ? String(initial.monto) : defaultMonto ?? '',
+  );
+  // Período de nómina al que se imputa el pago. Por defecto, el mes de la fecha.
+  const [periodoNomina, setPeriodoNomina] = useState(() => {
+    if (initial?.periodoNomina) return initial.periodoNomina;
+    if (defaultPeriodoNomina) return defaultPeriodoNomina;
+    const f = initial?.fecha ?? new Date();
+    return format(f, 'yyyy-MM');
+  });
 
   const create = useCreatePago();
   const update = useUpdatePago();
@@ -50,6 +65,7 @@ export function PagoForm({
       hora,
       tipoPago,
       monto: Number(monto) || 0,
+      periodoNomina,
     };
     try {
       if (isEdit && initial?.rowId) {
@@ -92,20 +108,33 @@ export function PagoForm({
           />
         </label>
       </div>
-      <label className="text-hueso/80 text-sm">
-        Tipo de pago
-        <select
-          value={tipoPago}
-          onChange={(e) => setTipoPago(e.target.value)}
-          className="mt-1 w-full px-3 py-2 rounded-lg bg-bg/70 border border-tostado/60 text-hueso outline-none focus:border-dorado/60"
-        >
-          {TIPOS_PAGO.map((t) => (
-            <option key={t} value={t}>
-              {t}
-            </option>
-          ))}
-        </select>
-      </label>
+      <div className="grid grid-cols-2 gap-3">
+        <label className="text-hueso/80 text-sm">
+          Tipo de pago
+          <select
+            value={tipoPago}
+            onChange={(e) => setTipoPago(e.target.value)}
+            className="mt-1 w-full px-3 py-2 rounded-lg bg-bg/70 border border-tostado/60 text-hueso outline-none focus:border-dorado/60"
+          >
+            {TIPOS_PAGO.map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="text-hueso/80 text-sm">
+          Período de nómina
+          <input
+            type="month"
+            value={periodoNomina}
+            onChange={(e) => setPeriodoNomina(e.target.value)}
+            required
+            className="mt-1 w-full px-3 py-2 rounded-lg bg-bg/70 border border-tostado/60 text-hueso outline-none focus:border-dorado/60"
+            title="Mes al que se imputa este pago en la nómina"
+          />
+        </label>
+      </div>
       <label className="text-hueso/80 text-sm">
         Monto (USD)
         <input

@@ -79,6 +79,8 @@ export interface PagoInput {
   hora: string;
   tipoPago: string;
   monto: number;
+  /** Período de nómina al que se imputa, formato 'yyyy-MM'. */
+  periodoNomina?: string;
 }
 
 function serializePago(p: PagoInput) {
@@ -89,6 +91,8 @@ function serializePago(p: PagoInput) {
     hora: p.hora,
     tipoPago: p.tipoPago,
     monto: p.monto,
+    periodoNomina:
+      p.periodoNomina || format(p.fecha, 'yyyy-MM'),
   };
 }
 

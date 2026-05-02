@@ -1,8 +1,12 @@
 import { Fragment, useMemo, useState } from 'react';
+import { format } from 'date-fns';
 import { Header } from '../components/Header';
 import { ErrorView } from '../components/ErrorView';
 import { SkeletonRows } from '../components/ui/Skeleton';
 import { MonthPicker } from '../components/ui/MonthPicker';
+import { Modal } from '../components/Modal';
+import { Badge } from '../components/ui/Badge';
+import { PagoForm } from '../components/PagoForm';
 import {
   useAsistencia,
   useDescansos,
@@ -14,6 +18,7 @@ import {
 } from '../lib/queries';
 import { computeNominaMes } from '../lib/analytics';
 import { fmtDate, fmtMoney, descansoColor, descansoLabel } from '../lib/format';
+import { useAuth } from '../lib/useAuth';
 import type { DescansoTipo } from '../lib/types';
 
 const TIPOS: DescansoTipo[] = ['PLANIFICADO', 'VACACIONES', 'PERMISO', 'ENFERMEDAD'];
@@ -28,6 +33,14 @@ export function Nomina() {
   const asistencia = useAsistencia();
   const [mes, setMes] = useState(() => new Date());
   const [openId, setOpenId] = useState<string | null>(null);
+  const { can } = useAuth();
+  const canPagar = can('pago.create');
+  const [presetAbono, setPresetAbono] = useState<{
+    empId: string;
+    nombre: string;
+    periodo: string;
+    monto: string;
+  } | null>(null);
 
   const anyError = empleados.error || pagos.error || faltas.error || extras.error;
   const anyLoading =
@@ -133,6 +146,7 @@ export function Nomina() {
                 <th className="text-right px-3 py-2">Anticipos</th>
                 <th className="text-right px-3 py-2">Pagado</th>
                 <th className="text-right px-3 py-2">Neto</th>
+                <th className="text-center px-3 py-2">Estado</th>
                 <th className="px-3 py-2 w-10"></th>
               </tr>
             </thead>
@@ -200,11 +214,54 @@ export function Nomina() {
                       >
                         {fmtMoney(r.netoMes)}
                       </td>
+                      <td className="px-3 py-2 text-center" onClick={(e) => e.stopPropagation()}>
+                        {(() => {
+                          const saldo =
+                            Math.round((r.netoMes - r.totalPagado) * 100) / 100;
+                          const estado =
+                            r.totalPagado <= 0
+                              ? 'PENDIENTE'
+                              : saldo <= 0.01
+                                ? 'PAGADO'
+                                : 'PARCIAL';
+                          return (
+                            <div className="flex flex-col items-center gap-1">
+                              <Badge
+                                tone={
+                                  estado === 'PAGADO'
+                                    ? 'ok'
+                                    : estado === 'PARCIAL'
+                                      ? 'warn'
+                                      : 'bad'
+                                }
+                              >
+                                {estado}
+                              </Badge>
+                              {canPagar && saldo > 0.01 && (
+                                <button
+                                  type="button"
+                                  className="text-[10px] px-2 py-0.5 rounded bg-emerald-700/30 text-emerald-300 hover:bg-emerald-700/50"
+                                  onClick={() =>
+                                    setPresetAbono({
+                                      empId: r.empleadoId,
+                                      nombre: r.nombre,
+                                      periodo: format(mes, 'yyyy-MM'),
+                                      monto: String(saldo.toFixed(2)),
+                                    })
+                                  }
+                                >
+                                  💵 Pagar saldo
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })()}
+                      </td>
                       <td className="px-3 py-2 text-right text-hueso/40">{open ? '▲' : '▼'}</td>
                     </tr>
                     {open && (
                       <tr className="bg-bg/40">
-                        <td colSpan={10} className="px-3 py-3">
+                        <td colSpan={11} className="px-3 py-3">
                           <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                             <Box title={`Faltas (${r.faltas})`}>
                               {r.faltasDetalle.length === 0 ? (
@@ -291,6 +348,23 @@ export function Nomina() {
           </table></div>
         )}
       </section>
+
+      <Modal
+        isOpen={!!presetAbono}
+        onClose={() => setPresetAbono(null)}
+        title={presetAbono ? `Pagar saldo · ${presetAbono.nombre}` : 'Pagar saldo'}
+      >
+        {presetAbono && (
+          <PagoForm
+            empleados={empleados.data ?? []}
+            defaultEmpleadoId={presetAbono.empId}
+            defaultPeriodoNomina={presetAbono.periodo}
+            defaultTipoPago="ABONO"
+            defaultMonto={presetAbono.monto}
+            onDone={() => setPresetAbono(null)}
+          />
+        )}
+      </Modal>
     </div>
   );
 }

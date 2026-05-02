@@ -21,6 +21,11 @@ export interface Pago {
   timestamp?: Date | null;
   /** UUID por fila — si viene vacío es una fila legacy (pre-plataforma). */
   rowId?: string;
+  /**
+   * Período de nómina al que se imputa el pago, formato 'yyyy-MM'.
+   * Si está vacío, se asume el mes de `fecha` (backward-compatible).
+   */
+  periodoNomina?: string;
 }
 
 export type DescansoTipo =

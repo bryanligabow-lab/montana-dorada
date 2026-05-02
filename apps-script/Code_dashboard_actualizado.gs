@@ -115,9 +115,14 @@ function getContactos_() {
   return out;
 }
 
+// PAGOS: columnas A..I = ID | NOMBRE | FECHA | HORA | TIPO_PAGO | MONTO | TIMESTAMP | ROW_ID | PERIODO_NOMINA
 function createPago_(d) {
   var sh = getSheet_(TAB_PAGOS); var rowId = uuid_(); var ts = new Date().toISOString();
-  sh.appendRow([str_(d.id), str_(d.nombre), str_(d.fecha), str_(d.hora), str_(d.tipoPago), num_(d.monto), ts, rowId]);
+  sh.appendRow([
+    str_(d.id), str_(d.nombre), str_(d.fecha), str_(d.hora),
+    str_(d.tipoPago), num_(d.monto), ts, rowId,
+    str_(d.periodoNomina || ''),
+  ]);
   return { rowId: rowId, timestamp: ts };
 }
 function updatePago_(d) {
@@ -126,6 +131,8 @@ function updatePago_(d) {
   if (row < 0) throw new Error('pago_no_encontrado');
   sh.getRange(row, 1, 1, 6).setValues([[str_(d.id), str_(d.nombre), str_(d.fecha), str_(d.hora), str_(d.tipoPago), num_(d.monto)]]);
   sh.getRange(row, 7).setValue(new Date().toISOString());
+  // Columna 9: PERIODO_NOMINA (se crea si no existe)
+  sh.getRange(row, 9).setValue(str_(d.periodoNomina || ''));
   return { rowId: d.rowId };
 }
 function deletePago_(d) {
