@@ -7,6 +7,7 @@ import {
   isWeekend,
   startOfMonth,
 } from 'date-fns';
+import { es } from 'date-fns/locale';
 import type { Descanso, Empleado } from '../lib/types';
 import { descansoColor, descansoLabel } from '../lib/format';
 
@@ -66,7 +67,7 @@ export function Calendar({
                 } ${isToday(d) ? 'bg-tostado/40' : ''}`}
                 title={format(d, 'EEEE d/MM/yyyy')}
               >
-                <div className="text-[10px] uppercase">{format(d, 'EEEEE')}</div>
+                <div className="text-[10px] uppercase">{format(d, 'EEEEE', { locale: es })}</div>
                 <div className="font-semibold">{format(d, 'd')}</div>
               </th>
             ))}
