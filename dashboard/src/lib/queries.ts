@@ -252,6 +252,18 @@ export function useSendReminderDescansos() {
       callApi('notify.reminderDescansos', { context: ctx || {} }),
   });
 }
+
+/**
+ * Envía el informe semanal por WhatsApp al jefe vía Evolution API.
+ * El backend (Apps Script) toma el `message` ya formateado y lo manda al
+ * `phone` indicado. La API key de Evolution se lee desde Script Properties.
+ */
+export function useSendInformeJefe() {
+  return useMutation({
+    mutationFn: (payload: { message: string; phone: string }) =>
+      callApi('notify.informeJefe', payload as unknown as Record<string, unknown>),
+  });
+}
 export function useSendInformeFinal() {
   return useMutation({
     mutationFn: (payload: { period: string; summary: string; detail: unknown }) =>

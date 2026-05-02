@@ -388,3 +388,93 @@ export function pagosByDayLast30(pagos: Pago[], now: Date = new Date()): {
     return { fecha: format(d, 'dd MMM'), total: out.get(key) ?? 0 };
   });
 }
+
+// ────────────────────────────────────────────────────────────────────────────
+// Informe semanal al jefe (texto plano para WhatsApp via Evolution API)
+// ────────────────────────────────────────────────────────────────────────────
+
+const DOW_NAMES = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+
+/**
+ * Construye el mensaje de WhatsApp para el jefe con:
+ *  - Saludo
+ *  - Lista de descansos de la semana en curso (con tipo)
+ *  - Para cada día de la semana: quiénes trabajan (= activos sin descanso ese día)
+ *  - Faltas/extras útiles del mes en curso
+ */
+export function buildInformeJefe(
+  empleados: Empleado[],
+  descansos: Descanso[],
+  faltas: Falta[],
+  refDate: Date = new Date(),
+): string {
+  const activos = empleados.filter((e) => e.estado === 'ACTIVO');
+  const { start, end, days } = weekRange(refDate);
+
+  const descSemana = descansos
+    .filter((d) => isWithinInterval(d.fecha, { start, end }))
+    .filter((d) => activos.some((a) => a.id === d.id))
+    .sort((a, b) => a.fecha.getTime() - b.fecha.getTime());
+
+  const lines: string[] = [];
+  lines.push('👋 Hola jefe, buen día.');
+  lines.push('');
+  lines.push(
+    `📋 *Informe semanal* (${format(start, 'dd/MM')} – ${format(end, 'dd/MM/yyyy')})`,
+  );
+  lines.push('');
+
+  // Sección 1: Descansos de la semana
+  lines.push('🌴 *Descansos esta semana:*');
+  if (descSemana.length === 0) {
+    lines.push('   _Nadie tiene descanso registrado._');
+  } else {
+    for (const d of descSemana) {
+      const dia = DOW_NAMES[(d.fecha.getDay() + 6) % 7];
+      lines.push(
+        `   • ${dia} ${format(d.fecha, 'dd/MM')} — ${d.nombre} (${d.tipo})`,
+      );
+    }
+  }
+  lines.push('');
+
+  // Sección 2: Quiénes trabajan cada día
+  lines.push('👥 *Trabajan cada día:*');
+  for (const day of days) {
+    const dia = DOW_NAMES[(day.getDay() + 6) % 7];
+    const fechaTxt = format(day, 'dd/MM');
+    const conDescanso = new Set(
+      descSemana.filter((d) => isSameDay(d.fecha, day)).map((d) => d.id),
+    );
+    const trabajan = activos.filter((e) => !conDescanso.has(e.id));
+    if (trabajan.length === 0) {
+      lines.push(`   • ${dia} ${fechaTxt}: _nadie trabaja_`);
+    } else {
+      lines.push(`   • ${dia} ${fechaTxt} (${trabajan.length}):`);
+      for (const e of trabajan) lines.push(`       – ${e.nombre}`);
+    }
+  }
+  lines.push('');
+
+  // Sección 3: Info útil del mes
+  const mStart = startOfMonth(refDate);
+  const mEnd = endOfMonth(refDate);
+  const faltasMes = faltas.filter((f) =>
+    isWithinInterval(f.fecha, { start: mStart, end: mEnd }),
+  );
+  if (faltasMes.length > 0) {
+    lines.push(`⚠️ *Faltas del mes:* ${faltasMes.length}`);
+    const top = faltasMes
+      .slice()
+      .sort((a, b) => b.fecha.getTime() - a.fecha.getTime())
+      .slice(0, 5);
+    for (const f of top) {
+      lines.push(`   • ${format(f.fecha, 'dd/MM')} — ${f.nombre}`);
+    }
+    if (faltasMes.length > 5) lines.push(`   … y ${faltasMes.length - 5} más`);
+    lines.push('');
+  }
+
+  lines.push('— Reporte automático · Plataforma Montaña Dorada');
+  return lines.join('\n');
+}

@@ -10,13 +10,17 @@ import {
   useDescansos,
   useEmpleados,
   useFaltas,
-  useSendReminderDescansos,
+  useSendInformeJefe,
 } from '../lib/queries';
 import { useAuth } from '../lib/useAuth';
 import { isBackendConfigured } from '../lib/config';
 import { fmtDate } from '../lib/format';
+import { buildInformeJefe } from '../lib/analytics';
 import type { Descanso } from '../lib/types';
 import { isSameMonth } from 'date-fns';
+
+// Número del jefe (Ecuador, formato internacional sin '+').
+const JEFE_PHONE = '593991866538';
 
 export function Asistencia() {
   const empleados = useEmpleados();
@@ -27,7 +31,8 @@ export function Asistencia() {
   const [editing, setEditing] = useState<Descanso | null>(null);
   const [creating, setCreating] = useState<{ empId?: string; fecha?: Date } | null>(null);
 
-  const reminder = useSendReminderDescansos();
+  const informe = useSendInformeJefe();
+  const [previewing, setPreviewing] = useState(false);
 
   if (empleados.error) return <ErrorView error={empleados.error} />;
   if (descansos.error) return <ErrorView error={descansos.error} />;
@@ -45,13 +50,25 @@ export function Asistencia() {
     [faltas.data, ref],
   );
 
-  async function onClickReminder() {
-    if (reminder.isPending) return;
+  const mensajeInforme = useMemo(
+    () =>
+      buildInformeJefe(
+        empleados.data ?? [],
+        descansos.data ?? [],
+        faltas.data ?? [],
+        ref,
+      ),
+    [empleados.data, descansos.data, faltas.data, ref],
+  );
+
+  async function onConfirmEnviarInforme() {
+    if (informe.isPending) return;
     try {
-      await reminder.mutateAsync(undefined);
-      alert('Recordatorio enviado ✓');
+      await informe.mutateAsync({ message: mensajeInforme, phone: JEFE_PHONE });
+      setPreviewing(false);
+      alert('Informe enviado ✓');
     } catch (e) {
-      alert(`Error enviando recordatorio: ${(e as Error).message}`);
+      alert(`Error enviando informe: ${(e as Error).message}`);
     }
   }
 
@@ -78,11 +95,11 @@ export function Asistencia() {
               <button
                 type="button"
                 className="px-3 py-2 rounded-lg text-sm bg-tostado/40 border border-dorado/30 text-dorado hover:bg-tostado/60 disabled:opacity-50"
-                onClick={onClickReminder}
-                disabled={reminder.isPending || !isBackendConfigured()}
-                title="Enviar WhatsApp a Dani recordando registrar descansos"
+                onClick={() => setPreviewing(true)}
+                disabled={!isBackendConfigured()}
+                title="Enviar informe semanal por WhatsApp al jefe (+593 99 186 6538)"
               >
-                {reminder.isPending ? 'Enviando…' : '📣 Recordar a Dani'}
+                📣 Enviar informe
               </button>
             )}
           </div>
@@ -162,6 +179,44 @@ export function Asistencia() {
             onDone={() => setEditing(null)}
           />
         )}
+      </Modal>
+
+      <Modal
+        isOpen={previewing}
+        onClose={() => !informe.isPending && setPreviewing(false)}
+        title="Vista previa · Informe al jefe"
+      >
+        <div className="flex flex-col gap-3">
+          <div className="text-hueso/60 text-xs">
+            Se enviará por WhatsApp a <span className="text-dorado font-mono">+593 99 186 6538</span>
+          </div>
+          <pre className="bg-bg/70 border border-tostado/60 rounded-lg p-3 text-hueso text-xs whitespace-pre-wrap max-h-96 overflow-y-auto font-sans">
+            {mensajeInforme}
+          </pre>
+          {informe.error && (
+            <div className="text-fuego text-sm">
+              {String((informe.error as Error).message)}
+            </div>
+          )}
+          <div className="flex justify-end gap-2 pt-2">
+            <button
+              type="button"
+              className="btn-ghost"
+              onClick={() => setPreviewing(false)}
+              disabled={informe.isPending}
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={onConfirmEnviarInforme}
+              disabled={informe.isPending}
+            >
+              {informe.isPending ? 'Enviando…' : 'Confirmar y enviar'}
+            </button>
+          </div>
+        </div>
       </Modal>
     </div>
   );
