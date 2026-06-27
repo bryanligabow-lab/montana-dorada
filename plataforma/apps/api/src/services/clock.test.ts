@@ -92,6 +92,41 @@ describe('flujo de marcación (integración con PGlite)', () => {
     expect(attBeto?.motivoTarde).toBe('Tráfico');
   });
 
+  it('flujo con almuerzo: descuenta el almuerzo de las horas trabajadas', async () => {
+    const db = await setup();
+    const biz = (
+      await db
+        .insert(businesses)
+        .values({
+          slug: 'lunch',
+          nombre: 'Lunch',
+          timezone: 'America/Guayaquil',
+          radioMetros: 80,
+          horaEntradaLv: '08:00:00',
+          horaEntradaFds: '08:00:00',
+          multaPorMin: 0.1,
+          dayCutoffHour: 2,
+          gpsRequerido: false,
+        })
+        .returning()
+    )[0]!;
+    await db
+      .insert(employees)
+      .values({ businessId: biz.id, codigo: 'L1', qrToken: 'tokenLLLLLLLL', nombre: 'Luz' });
+
+    const tok = { token: 'tokenLLLLLLLL' };
+    // 08:00 entrada (13:00Z)
+    expect((await clock({ db, now: new Date('2026-06-29T13:00:00Z') }, { ...tok, action: 'entrada' }))?.kind).toBe('entrada');
+    // 12:00 sale a almuerzo (17:00Z)
+    expect((await clock({ db, now: new Date('2026-06-29T17:00:00Z') }, { ...tok, action: 'almuerzo_salida' }))?.kind).toBe('almuerzo_salida');
+    // 13:00 regresa (18:00Z)
+    expect((await clock({ db, now: new Date('2026-06-29T18:00:00Z') }, { ...tok, action: 'almuerzo_regreso' }))?.kind).toBe('almuerzo_regreso');
+    // 17:00 salida (22:00Z) → 9h jornada − 1h almuerzo = 8h
+    const out = await clock({ db, now: new Date('2026-06-29T22:00:00Z') }, { ...tok, action: 'salida' });
+    expect(out?.kind).toBe('salida');
+    if (out?.kind === 'salida') expect(out.horasTrabajadas).toBe('8h 00m');
+  });
+
   it('rechaza marcación fuera del rango GPS cuando el negocio lo exige', async () => {
     const db = await setup();
     const biz = (

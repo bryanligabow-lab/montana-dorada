@@ -7,9 +7,10 @@ import { clockRoutes } from './routes/clock';
 import { businessRoutes } from './routes/businesses';
 import { employeeRoutes } from './routes/employees';
 import { adminRoutes } from './routes/admin';
+import { importRoutes } from './routes/import';
 
 export async function buildServer() {
-  const app = Fastify({ logger: { level: env.isProd ? 'info' : 'warn' } });
+  const app = Fastify({ logger: { level: env.isProd ? 'info' : 'warn' }, bodyLimit: 15 * 1024 * 1024 });
 
   await app.register(cors, { origin: true });
   await app.register(jwt, { secret: env.jwtSecret });
@@ -29,6 +30,7 @@ export async function buildServer() {
   await app.register(businessRoutes);
   await app.register(employeeRoutes);
   await app.register(adminRoutes);
+  await app.register(importRoutes);
 
   return app;
 }

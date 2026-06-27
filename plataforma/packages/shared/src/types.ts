@@ -6,6 +6,9 @@ export type EmployeeStatus = 'ACTIVO' | 'INACTIVO';
 /** Estado de la entrada respecto a la hora límite del negocio. */
 export type AttendanceState = 'TEMPRANO' | 'A_TIEMPO' | 'TARDE';
 
+/** Las 4 marcaciones posibles en un día. */
+export type ClockAction = 'entrada' | 'almuerzo_salida' | 'almuerzo_regreso' | 'salida';
+
 export interface MedalLevel {
   key: 'diamante' | 'oro' | 'plata' | 'bronce';
   /** Minutos de adelanto (antes de la hora límite) a partir de los cuales aplica. */
@@ -73,6 +76,10 @@ export interface Attendance {
   horaSalida: string | null;
   entradaAt: string | null;
   salidaAt: string | null;
+  horaAlmuerzoSalida: string | null;
+  horaAlmuerzoRegreso: string | null;
+  almuerzoSalidaAt: string | null;
+  almuerzoRegresoAt: string | null;
   estado: AttendanceState | null;
   minTarde: number;
   motivoTarde: string | null;

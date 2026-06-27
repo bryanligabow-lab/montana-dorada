@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { AttendanceState, Business, BusinessBranding, MedalLevel, User } from './types';
+import type { AttendanceState, Business, BusinessBranding, ClockAction, MedalLevel, User } from './types';
 
 // ─── Marcación (PWA) ─────────────────────────────────────────────────────────
 
@@ -15,6 +15,8 @@ export interface ClockContext {
     horaLimiteHoy: string;
   };
   employee: { nombre: string; codigo: string };
+  /** Marcaciones que el empleado puede hacer ahora (según lo que ya marcó hoy). */
+  acciones: ClockAction[];
 }
 
 export const clockRequestSchema = z.object({
@@ -22,6 +24,8 @@ export const clockRequestSchema = z.object({
   lat: z.number().min(-90).max(90).optional(),
   lng: z.number().min(-180).max(180).optional(),
   accuracy: z.number().nonnegative().optional(),
+  /** Marcación a registrar. Si se omite, el servidor elige la siguiente natural. */
+  action: z.enum(['entrada', 'almuerzo_salida', 'almuerzo_regreso', 'salida']).optional(),
 });
 export type ClockRequestInput = z.infer<typeof clockRequestSchema>;
 
@@ -36,6 +40,8 @@ export type ClockResult =
   | { kind: 'entrada'; nombre: string; fecha: string; horaEntrada: string; estado: AttendanceState; minTemprano: number; medal: MedalLevel | null }
   | { kind: 'tardanza_motivo'; nombre: string; fecha: string; horaEntrada: string; minTarde: number; multa: number; motivos: string[] }
   | { kind: 'salida'; nombre: string; fecha: string; horaEntrada: string; horaSalida: string; horasTrabajadas: string; estado: AttendanceState | null; minTarde: number }
+  | { kind: 'almuerzo_salida'; nombre: string; fecha: string; hora: string }
+  | { kind: 'almuerzo_regreso'; nombre: string; fecha: string; hora: string }
   | { kind: 'espera'; nombre: string; minutosRestantes: number }
   | { kind: 'completo'; nombre: string; fecha: string }
   | { kind: 'duplicado'; nombre: string }

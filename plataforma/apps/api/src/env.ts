@@ -34,5 +34,7 @@ export const env = {
     url: process.env.EVOLUTION_URL ?? '',
     key: process.env.EVOLUTION_KEY ?? '',
     instance: process.env.EVOLUTION_INSTANCE ?? '',
+    /** JID del grupo de WhatsApp destino (…@g.us) o número. */
+    group: process.env.WHATSAPP_GROUP ?? '',
   },
 };

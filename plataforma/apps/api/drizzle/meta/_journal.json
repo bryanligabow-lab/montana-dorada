@@ -8,6 +8,13 @@
       "when": 1782582758969,
       "tag": "0000_sleepy_patriot",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1782593253705,
+      "tag": "0001_strange_sebastian_shaw",
+      "breakpoints": true
     }
   ]
 }

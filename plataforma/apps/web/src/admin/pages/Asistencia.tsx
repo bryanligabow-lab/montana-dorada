@@ -26,12 +26,13 @@ export function Asistencia() {
           <Spinner />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm min-w-[760px]">
+            <table className="w-full text-sm min-w-[880px]">
               <thead>
                 <tr className="text-muted text-left text-xs uppercase tracking-wide">
                   <th className="p-2">Fecha</th>
                   <th className="p-2">Empleado</th>
                   <th className="p-2">Entrada</th>
+                  <th className="p-2">Almuerzo</th>
                   <th className="p-2">Salida</th>
                   <th className="p-2">Estado</th>
                   <th className="p-2 text-center">Min tarde</th>
@@ -48,6 +49,11 @@ export function Asistencia() {
                       <div className="text-xs text-muted">{r.empCodigo}</div>
                     </td>
                     <td className="p-2">{r.horaEntrada ?? '–'}</td>
+                    <td className="p-2 text-xs text-muted">
+                      {r.horaAlmuerzoSalida
+                        ? `${r.horaAlmuerzoSalida.slice(0, 5)}–${r.horaAlmuerzoRegreso?.slice(0, 5) ?? '…'}`
+                        : '–'}
+                    </td>
                     <td className="p-2">{r.horaSalida ?? '–'}</td>
                     <td
                       className="p-2 font-bold"
@@ -69,7 +75,7 @@ export function Asistencia() {
                 ))}
                 {q.data?.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="p-6 text-center text-muted">
+                    <td colSpan={9} className="p-6 text-center text-muted">
                       Sin marcaciones en el período.
                     </td>
                   </tr>

@@ -1,11 +1,18 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import type { ClockContext, ClockResult } from '@asis/shared';
+import type { ClockAction, ClockContext, ClockResult } from '@asis/shared';
 import { MEDAL_LEVELS } from '@asis/shared';
 import { api, ApiError } from '../lib/api';
 import { applyBranding } from '../lib/theme';
 
 type Phase = 'loading' | 'invalid' | 'ready' | 'result';
+
+const ACTION_LABELS: Record<ClockAction, string> = {
+  entrada: '✅ Registrar entrada',
+  almuerzo_salida: '🍽️ Salir a almuerzo',
+  almuerzo_regreso: '↩️ Regresar de almuerzo',
+  salida: '🔴 Marcar salida',
+};
 
 interface Gps {
   status: 'idle' | 'checking' | 'ok' | 'fail';
@@ -86,14 +93,14 @@ export function MarcarPage() {
     );
   }
 
-  async function marcar() {
+  async function marcar(action: ClockAction) {
     if (!ctx) return;
     setBusy(true);
     setErr('');
     try {
       const r = await api<ClockResult>('/api/clock', {
         method: 'POST',
-        body: { token, lat: gps.lat, lng: gps.lng },
+        body: { token, lat: gps.lat, lng: gps.lng, action },
       });
       setResult(r);
       setPhase('result');
@@ -174,13 +181,22 @@ export function MarcarPage() {
                 </div>
               )}
 
-              <button
-                className="btn-brand w-full py-4 text-base"
-                disabled={!gpsOk || busy}
-                onClick={marcar}
-              >
-                {busy ? 'Registrando…' : '✅ Registrar asistencia'}
-              </button>
+              {ctx.acciones.length === 0 ? (
+                <div className="text-center text-muted py-3">Ya completaste tu jornada de hoy. ✅</div>
+              ) : (
+                <div className="space-y-2">
+                  {ctx.acciones.map((a, i) => (
+                    <button
+                      key={a}
+                      className={`w-full py-4 text-base ${i === 0 ? 'btn-brand' : 'chip'}`}
+                      disabled={!gpsOk || busy}
+                      onClick={() => marcar(a)}
+                    >
+                      {busy ? 'Registrando…' : ACTION_LABELS[a]}
+                    </button>
+                  ))}
+                </div>
+              )}
               {err && <div className="text-center text-sm mt-3" style={{ color: 'var(--c-accent)' }}>{traducirError(err)}</div>}
             </div>
           </div>
@@ -285,6 +301,26 @@ function ResultView({
           <Row k="Entrada" v={result.horaEntrada} />
           <Row k="Salida" v={result.horaSalida} color="var(--c-accent)" />
           {result.horasTrabajadas && <Row k="Horas" v={result.horasTrabajadas} />}
+        </div>
+      </div>
+    );
+  }
+
+  if (result.kind === 'almuerzo_salida' || result.kind === 'almuerzo_regreso') {
+    const esSalida = result.kind === 'almuerzo_salida';
+    return (
+      <div className="p-5 text-center">
+        <div
+          className="rounded-2xl p-6 mb-2"
+          style={{ background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.12)' }}
+        >
+          <div className="text-5xl mb-1">{esSalida ? '🍽️' : '↩️'}</div>
+          <div className="text-lg font-black">
+            {esSalida ? 'Saliste a almuerzo' : 'Regresaste del almuerzo'}
+          </div>
+          <div className="text-sm mt-1" style={{ color: 'var(--c-primary)' }}>
+            {result.hora}
+          </div>
         </div>
       </div>
     );

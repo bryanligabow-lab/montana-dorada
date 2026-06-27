@@ -14,6 +14,8 @@ export function toAttendance(a: typeof attendance.$inferSelect): Attendance {
     ...a,
     entradaAt: a.entradaAt ? a.entradaAt.toISOString() : null,
     salidaAt: a.salidaAt ? a.salidaAt.toISOString() : null,
+    almuerzoSalidaAt: a.almuerzoSalidaAt ? a.almuerzoSalidaAt.toISOString() : null,
+    almuerzoRegresoAt: a.almuerzoRegresoAt ? a.almuerzoRegresoAt.toISOString() : null,
   };
 }
 

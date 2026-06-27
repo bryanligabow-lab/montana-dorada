@@ -1,14 +1,16 @@
 import { and, eq } from 'drizzle-orm';
 import { MIN_MINUTES_BETWEEN_ENTRY_EXIT, MOTIVOS_TARDANZA } from '@asis/shared';
-import type { ClockContext, ClockResult } from '@asis/shared';
+import type { ClockAction, ClockContext, ClockResult } from '@asis/shared';
 import type { DB } from '../db';
 import { attendance, businesses, employees, punctuality } from '../db/schema';
 import { businessDate, formatDuration, hhmmssToMs, horaLimite, timeStrInTz } from '../core/time';
 import { checkGps } from '../core/gps';
 import { calcularMultaGanada, computeMulta, evalEntrada } from '../core/punctuality';
+import { notifyMarcacion } from '../reports/notify';
 
 type Biz = typeof businesses.$inferSelect;
 type Emp = typeof employees.$inferSelect;
+type Att = typeof attendance.$inferSelect;
 
 export interface ClockCtx {
   db: DB;
@@ -25,6 +27,43 @@ async function resolve(db: DB, token: string): Promise<{ emp: Emp; biz: Biz } | 
   return { emp, biz };
 }
 
+/** Marcaciones que el empleado puede hacer ahora, según lo ya registrado hoy. */
+export function accionesDisponibles(row: Att | undefined): ClockAction[] {
+  if (!row) return ['entrada'];
+  if (row.salidaAt || row.horaSalida) return [];
+  if (!row.almuerzoSalidaAt && !row.horaAlmuerzoSalida) return ['almuerzo_salida', 'salida'];
+  if (!row.almuerzoRegresoAt && !row.horaAlmuerzoRegreso) return ['almuerzo_regreso'];
+  return ['salida'];
+}
+
+function autoAction(acciones: ClockAction[]): ClockAction | null {
+  if (acciones.includes('entrada')) return 'entrada';
+  if (acciones.includes('almuerzo_regreso')) return 'almuerzo_regreso';
+  if (acciones.includes('salida')) return 'salida';
+  return acciones[0] ?? null;
+}
+
+/** Dispara las notificaciones (correo + WhatsApp) sin bloquear la respuesta. */
+function notify(biz: Biz, emp: Emp, result: ClockResult): void {
+  void notifyMarcacion({
+    negocio: biz.nombre,
+    empleado: emp.nombre,
+    codigo: emp.codigo,
+    reportEmails: biz.reportEmails,
+    result,
+  }).catch(() => {});
+}
+
+async function rowDeHoy(db: DB, empId: string, fecha: string): Promise<Att | undefined> {
+  return (
+    await db
+      .select()
+      .from(attendance)
+      .where(and(eq(attendance.employeeId, empId), eq(attendance.fecha, fecha)))
+      .limit(1)
+  )[0];
+}
+
 export async function getClockContext(
   db: DB,
   token: string,
@@ -33,6 +72,8 @@ export async function getClockContext(
   const r = await resolve(db, token);
   if (!r) return null;
   const { emp, biz } = r;
+  const fecha = businessDate(now, biz.timezone, biz.dayCutoffHour);
+  const row = await rowDeHoy(db, emp.id, fecha);
   return {
     business: {
       nombre: biz.nombre,
@@ -44,12 +85,13 @@ export async function getClockContext(
       horaLimiteHoy: horaLimite(biz, now),
     },
     employee: { nombre: emp.nombre, codigo: emp.codigo },
+    acciones: accionesDisponibles(row),
   };
 }
 
 export async function clock(
   ctx: ClockCtx,
-  input: { token: string; lat?: number; lng?: number },
+  input: { token: string; lat?: number; lng?: number; action?: ClockAction },
 ): Promise<ClockResult | null> {
   const { db } = ctx;
   const now = ctx.now ?? new Date();
@@ -63,20 +105,21 @@ export async function clock(
   }
 
   const fecha = businessDate(now, biz.timezone, biz.dayCutoffHour);
-  const existing = (
-    await db
-      .select()
-      .from(attendance)
-      .where(and(eq(attendance.employeeId, emp.id), eq(attendance.fecha, fecha)))
-      .limit(1)
-  )[0];
+  const existing = await rowDeHoy(db, emp.id, fecha);
+  const acciones = accionesDisponibles(existing);
 
-  // ── ENTRADA ──────────────────────────────────────────────────────────────
-  if (!existing) {
-    const hora = timeStrInTz(now, biz.timezone);
+  if (acciones.length === 0) return { kind: 'completo', nombre: emp.nombre, fecha };
+
+  const action =
+    input.action && acciones.includes(input.action) ? input.action : autoAction(acciones);
+  if (!action) return { kind: 'completo', nombre: emp.nombre, fecha };
+
+  const hora = timeStrInTz(now, biz.timezone);
+
+  // ── ENTRADA ────────────────────────────────────────────────────────────────
+  if (action === 'entrada') {
     const limite = horaLimite(biz, now);
     const ev = evalEntrada(hhmmssToMs(hora)!, hhmmssToMs(limite)!);
-
     await db.insert(attendance).values({
       businessId: biz.id,
       employeeId: emp.id,
@@ -94,7 +137,6 @@ export async function clock(
     });
 
     if (ev.estado === 'TARDE') {
-      // La entrada ya quedó registrada; pedimos el motivo para cerrar la multa.
       const multa = computeMulta(ev.minTarde, biz.multaPorMin);
       return {
         kind: 'tardanza_motivo',
@@ -118,8 +160,7 @@ export async function clock(
       puntos: ev.medal?.puntos ?? 0,
       multaPagada: 0,
     });
-
-    return {
+    const res: ClockResult = {
       kind: 'entrada',
       nombre: emp.nombre,
       fecha,
@@ -128,45 +169,67 @@ export async function clock(
       minTemprano: ev.minTemprano,
       medal: ev.medal,
     };
+    notify(biz, emp, res);
+    return res;
   }
 
-  // ── Ya tiene entrada ───────────────────────────────────────────────────────
-  if (existing.salidaAt || existing.horaSalida) {
-    return { kind: 'completo', nombre: emp.nombre, fecha };
+  const row = existing!;
+
+  // ── SALIDA A ALMUERZO ────────────────────────────────────────────────────────
+  if (action === 'almuerzo_salida') {
+    await db
+      .update(attendance)
+      .set({ horaAlmuerzoSalida: hora, almuerzoSalidaAt: now })
+      .where(eq(attendance.id, row.id));
+    const res: ClockResult = { kind: 'almuerzo_salida', nombre: emp.nombre, fecha, hora };
+    notify(biz, emp, res);
+    return res;
   }
 
-  // ── SALIDA ─────────────────────────────────────────────────────────────────
-  if (existing.entradaAt) {
-    const diffMin = Math.floor((now.getTime() - new Date(existing.entradaAt).getTime()) / 60000);
+  // ── REGRESO DE ALMUERZO ──────────────────────────────────────────────────────
+  if (action === 'almuerzo_regreso') {
+    await db
+      .update(attendance)
+      .set({ horaAlmuerzoRegreso: hora, almuerzoRegresoAt: now })
+      .where(eq(attendance.id, row.id));
+    const res: ClockResult = { kind: 'almuerzo_regreso', nombre: emp.nombre, fecha, hora };
+    notify(biz, emp, res);
+    return res;
+  }
+
+  // ── SALIDA ───────────────────────────────────────────────────────────────────
+  // Anti doble-tap: solo si sale sin haber tomado almuerzo y muy pronto tras entrar.
+  if (row.entradaAt && !row.almuerzoRegresoAt) {
+    const diffMin = Math.floor((now.getTime() - new Date(row.entradaAt).getTime()) / 60000);
     if (diffMin < MIN_MINUTES_BETWEEN_ENTRY_EXIT) {
-      return {
-        kind: 'espera',
-        nombre: emp.nombre,
-        minutosRestantes: MIN_MINUTES_BETWEEN_ENTRY_EXIT - diffMin,
-      };
+      return { kind: 'espera', nombre: emp.nombre, minutosRestantes: MIN_MINUTES_BETWEEN_ENTRY_EXIT - diffMin };
     }
   }
 
-  const horaSalida = timeStrInTz(now, biz.timezone);
-  const horasTxt = existing.entradaAt
-    ? formatDuration(now.getTime() - new Date(existing.entradaAt).getTime())
-    : '';
+  let ms = row.entradaAt ? now.getTime() - new Date(row.entradaAt).getTime() : 0;
+  // Descuenta el almuerzo de las horas trabajadas.
+  if (row.almuerzoSalidaAt && row.almuerzoRegresoAt) {
+    ms -= new Date(row.almuerzoRegresoAt).getTime() - new Date(row.almuerzoSalidaAt).getTime();
+  }
+  const horasTxt = ms > 0 ? formatDuration(ms) : '';
 
   await db
     .update(attendance)
-    .set({ horaSalida, salidaAt: now, horasTrabajadas: horasTxt })
-    .where(eq(attendance.id, existing.id));
+    .set({ horaSalida: hora, salidaAt: now, horasTrabajadas: horasTxt })
+    .where(eq(attendance.id, row.id));
 
-  return {
+  const res: ClockResult = {
     kind: 'salida',
     nombre: emp.nombre,
     fecha,
-    horaEntrada: existing.horaEntrada ?? '',
-    horaSalida,
+    horaEntrada: row.horaEntrada ?? '',
+    horaSalida: hora,
     horasTrabajadas: horasTxt,
-    estado: existing.estado,
-    minTarde: existing.minTarde,
+    estado: row.estado,
+    minTarde: row.minTarde,
   };
+  notify(biz, emp, res);
+  return res;
 }
 
 export async function clockMotivo(
@@ -180,13 +243,7 @@ export async function clockMotivo(
   const { emp, biz } = r;
 
   const fecha = businessDate(now, biz.timezone, biz.dayCutoffHour);
-  const row = (
-    await db
-      .select()
-      .from(attendance)
-      .where(and(eq(attendance.employeeId, emp.id), eq(attendance.fecha, fecha)))
-      .limit(1)
-  )[0];
+  const row = await rowDeHoy(db, emp.id, fecha);
   if (!row) return null;
 
   await db.update(attendance).set({ motivoTarde: input.motivo }).where(eq(attendance.id, row.id));
@@ -205,7 +262,9 @@ export async function clockMotivo(
     multaPagada: multa,
   });
 
-  return { kind: 'entrada', nombre: emp.nombre, fecha, horaEntrada: hora, estado: 'TARDE', minTemprano: 0, medal: null };
+  const res: ClockResult = { kind: 'entrada', nombre: emp.nombre, fecha, horaEntrada: hora, estado: 'TARDE', minTemprano: 0, medal: null };
+  notify(biz, emp, res);
+  return res;
 }
 
 interface PuntInput {
