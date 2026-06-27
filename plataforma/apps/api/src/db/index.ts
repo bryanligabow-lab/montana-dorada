@@ -13,9 +13,11 @@ let kind: 'pg' | 'pglite' = 'pglite';
 let dbPromise: Promise<DB> | null = null;
 
 async function init(): Promise<DB> {
-  if (env.databaseUrl) {
+  // Usa Postgres si hay DATABASE_URL o variables PG* (PGHOST/PGUSER/PGPASSWORD/...).
+  if (env.databaseUrl || process.env.PGHOST) {
     kind = 'pg';
-    const pool = new pg.Pool({ connectionString: env.databaseUrl });
+    // Con connectionString si está; si no, node-postgres lee las PG* del entorno.
+    const pool = env.databaseUrl ? new pg.Pool({ connectionString: env.databaseUrl }) : new pg.Pool();
     return drizzlePg(pool, { schema });
   }
   kind = 'pglite';
