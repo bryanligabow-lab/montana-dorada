@@ -1,0 +1,65 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+  --c-primary: #43a047;
+  --c-accent: #e53935;
+  --c-bg: #0a1a0f;
+  --c-card: #0f2417;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--c-bg);
+  color: #f1f8f3;
+  font-family: 'Nunito', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+@layer components {
+  .card {
+    background: var(--c-card);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 20px;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+  }
+  .btn-brand {
+    background: var(--c-primary);
+    color: #fff;
+    font-weight: 800;
+    border-radius: 16px;
+    transition: opacity 0.15s;
+  }
+  .btn-brand:disabled {
+    opacity: 0.4;
+    pointer-events: none;
+  }
+  .chip {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 14px;
+    font-weight: 700;
+    transition: all 0.15s;
+  }
+  .chip:hover {
+    border-color: var(--c-primary);
+  }
+  .field {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 12px;
+    color: #f1f8f3;
+  }
+  .field:focus {
+    outline: none;
+    border-color: var(--c-primary);
+  }
+}
