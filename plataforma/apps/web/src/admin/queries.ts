@@ -3,6 +3,7 @@ import type {
   Attendance,
   AuditLog,
   Business,
+  BusinessCreateInput,
   BusinessUpdateInput,
   Employee,
   EmployeeCreateInput,
@@ -105,6 +106,38 @@ export function useUpdateBusiness(bizId: string) {
     mutationFn: (data: BusinessUpdateInput) =>
       api<Business>(`/api/admin/businesses/${bizId}`, { method: 'PATCH', body: data, auth: true }),
     onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['me'] });
+    },
+  });
+}
+
+// ── Panel de dueño (OWNER): todos los negocios, crear, suspender/activar ─────
+export function useBusinesses() {
+  return useQuery({
+    queryKey: ['businesses'],
+    queryFn: () => api<Business[]>('/api/admin/businesses', { auth: true }),
+  });
+}
+
+export function useCreateBusiness() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: BusinessCreateInput) =>
+      api<Business>('/api/admin/businesses', { method: 'POST', body: data, auth: true }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['businesses'] });
+      qc.invalidateQueries({ queryKey: ['me'] });
+    },
+  });
+}
+
+export function useToggleBusiness() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, activo }: { id: string; activo: boolean }) =>
+      api(`/api/admin/businesses/${id}/estado`, { method: 'PATCH', body: { activo }, auth: true }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['businesses'] });
       qc.invalidateQueries({ queryKey: ['me'] });
     },
   });

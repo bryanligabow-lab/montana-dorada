@@ -11,6 +11,7 @@ import { Asistencia } from './pages/Asistencia';
 import { Empleados } from './pages/Empleados';
 import { Auditoria } from './pages/Auditoria';
 import { Config } from './pages/Config';
+import { Negocios } from './pages/Negocios';
 
 export function AdminApp() {
   const [token, setTok] = useState(getToken());
@@ -75,6 +76,8 @@ const NAV = [
 
 function Layout() {
   const { businesses, current, setCurrentId, logout, user } = useAdmin();
+  const nav =
+    user.rol === 'OWNER' ? [{ to: 'negocios', label: '🏢 Negocios', end: false }, ...NAV] : NAV;
   return (
     <div className="min-h-screen md:flex">
       <aside className="md:w-60 md:min-h-screen border-b md:border-b-0 md:border-r border-white/10 p-4">
@@ -95,7 +98,7 @@ function Layout() {
           </select>
         )}
         <nav className="flex md:flex-col gap-1 flex-wrap">
-          {NAV.map((n) => (
+          {nav.map((n) => (
             <NavLink
               key={n.to}
               to={n.to}
@@ -115,6 +118,7 @@ function Layout() {
       <main className="flex-1 p-4 md:p-6 overflow-x-hidden">
         <Routes>
           <Route index element={<Ranking />} />
+          <Route path="negocios" element={<Negocios />} />
           <Route path="asistencia" element={<Asistencia />} />
           <Route path="empleados" element={<Empleados />} />
           <Route path="auditoria" element={<Auditoria />} />

@@ -85,7 +85,8 @@ export async function getClockContext(
       horaLimiteHoy: horaLimite(biz, now),
     },
     employee: { nombre: emp.nombre, codigo: emp.codigo },
-    acciones: accionesDisponibles(row),
+    acciones: biz.activo ? accionesDisponibles(row) : [],
+    suspendido: !biz.activo,
   };
 }
 
@@ -98,6 +99,8 @@ export async function clock(
   const r = await resolve(db, input.token);
   if (!r) return null;
   const { emp, biz } = r;
+
+  if (!biz.activo) return { kind: 'suspendido', nombre: emp.nombre };
 
   const gps = checkGps(biz, input.lat, input.lng);
   if (biz.gpsRequerido && !gps.valido) {

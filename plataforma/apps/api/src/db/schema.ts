@@ -29,6 +29,8 @@ export const businesses = pgTable('businesses', {
     .notNull()
     .default({ primary: '#43A047', accent: '#E53935', bg: '#0A1A0F', card: '#0F2417' }),
   reportEmails: jsonb('report_emails').$type<string[]>().notNull().default([]),
+  /** Suscripción activa. Si es false, el negocio queda suspendido (nadie marca ni entra). */
+  activo: boolean('activo').notNull().default(true),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 

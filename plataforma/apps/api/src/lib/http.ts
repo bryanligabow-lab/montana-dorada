@@ -1,4 +1,5 @@
 import type { FastifyRequest } from 'fastify';
+import { eq } from 'drizzle-orm';
 import { getDb } from '../db';
 import { businesses } from '../db/schema';
 
@@ -15,7 +16,15 @@ export async function accessibleIds(req: FastifyRequest): Promise<string[]> {
 }
 
 export async function canAccess(req: FastifyRequest, businessId: string): Promise<boolean> {
-  return (await accessibleIds(req)).includes(businessId);
+  const ids = await accessibleIds(req);
+  if (!ids.includes(businessId)) return false;
+  if (req.user.rol === 'OWNER') return true;
+  // Un ADMIN no accede a un negocio suspendido; el OWNER siempre puede (para gestionarlo).
+  const db = await getDb();
+  const b = (
+    await db.select({ activo: businesses.activo }).from(businesses).where(eq(businesses.id, businessId)).limit(1)
+  )[0];
+  return !!b?.activo;
 }
 
 export interface DateRange {

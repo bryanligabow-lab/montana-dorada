@@ -47,6 +47,8 @@ export interface Business {
   gpsRequerido: boolean;
   branding: BusinessBranding;
   reportEmails: string[];
+  /** Suscripción activa. Si es false, el negocio está suspendido. */
+  activo: boolean;
   createdAt: string;
 }
 

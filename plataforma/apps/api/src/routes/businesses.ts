@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { eq } from 'drizzle-orm';
-import { businessUpdateSchema } from '@asis/shared';
+import { businessCreateSchema, businessUpdateSchema } from '@asis/shared';
 import { getDb } from '../db';
 import { businesses } from '../db/schema';
 import { toBusiness } from '../lib/dto';
@@ -52,4 +52,51 @@ export async function businessRoutes(app: FastifyInstance): Promise<void> {
     const updated = (await db.select().from(businesses).where(eq(businesses.id, id)).limit(1))[0]!;
     return toBusiness(updated);
   });
+
+  // ── Solo OWNER (dueño de la plataforma): crear negocio y suspender/activar ──
+  app.post('/api/admin/businesses', { preHandler: [app.authenticate] }, async (req, reply) => {
+    if (req.user.rol !== 'OWNER') return reply.code(403).send({ error: 'solo_owner' });
+    const parsed = businessCreateSchema.safeParse(req.body);
+    if (!parsed.success)
+      return reply.code(400).send({ error: 'datos_invalidos', detalle: parsed.error.flatten() });
+
+    const db = await getDb();
+    const existe = (
+      await db.select().from(businesses).where(eq(businesses.slug, parsed.data.slug)).limit(1)
+    )[0];
+    if (existe) return reply.code(409).send({ error: 'slug_existe' });
+
+    const [biz] = await db.insert(businesses).values(parsed.data).returning();
+    await writeAudit(db, {
+      businessId: biz!.id,
+      userId: req.user.sub,
+      actorNombre: req.user.nombre,
+      accion: 'create',
+      entidad: 'business',
+      entidadId: biz!.id,
+      detalle: { nombre: parsed.data.nombre, slug: parsed.data.slug },
+    });
+    return toBusiness(biz!);
+  });
+
+  app.patch(
+    '/api/admin/businesses/:id/estado',
+    { preHandler: [app.authenticate] },
+    async (req, reply) => {
+      if (req.user.rol !== 'OWNER') return reply.code(403).send({ error: 'solo_owner' });
+      const { id } = req.params as { id: string };
+      const activo = !!(req.body as { activo?: boolean }).activo;
+      const db = await getDb();
+      await db.update(businesses).set({ activo }).where(eq(businesses.id, id));
+      await writeAudit(db, {
+        businessId: id,
+        userId: req.user.sub,
+        actorNombre: req.user.nombre,
+        accion: activo ? 'activar' : 'suspender',
+        entidad: 'business',
+        entidadId: id,
+      });
+      return { ok: true, activo };
+    },
+  );
 }

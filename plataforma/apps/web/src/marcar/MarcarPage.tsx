@@ -181,7 +181,13 @@ export function MarcarPage() {
                 </div>
               )}
 
-              {ctx.acciones.length === 0 ? (
+              {ctx.suspendido ? (
+                <div className="text-center py-4">
+                  <div className="text-4xl mb-2">⏸️</div>
+                  <div className="font-bold">Servicio suspendido</div>
+                  <div className="text-muted text-sm mt-1">Contacta al administrador.</div>
+                </div>
+              ) : ctx.acciones.length === 0 ? (
                 <div className="text-center text-muted py-3">Ya completaste tu jornada de hoy. ✅</div>
               ) : (
                 <div className="space-y-2">
@@ -342,6 +348,7 @@ function ResultView({
           : '',
     },
     duplicado: { icon: 'ℹ️', title: 'Espera un momento', text: 'Escaneo reciente detectado.' },
+    suspendido: { icon: '⏸️', title: 'Servicio suspendido', text: 'Contacta al administrador.' },
   };
   const s = simple[result.kind] ?? { icon: 'ℹ️', title: '', text: '' };
   return (

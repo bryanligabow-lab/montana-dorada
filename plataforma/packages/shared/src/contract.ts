@@ -17,6 +17,8 @@ export interface ClockContext {
   employee: { nombre: string; codigo: string };
   /** Marcaciones que el empleado puede hacer ahora (según lo que ya marcó hoy). */
   acciones: ClockAction[];
+  /** Si el negocio está suspendido (falta de pago), no se puede marcar. */
+  suspendido: boolean;
 }
 
 export const clockRequestSchema = z.object({
@@ -45,6 +47,7 @@ export type ClockResult =
   | { kind: 'espera'; nombre: string; minutosRestantes: number }
   | { kind: 'completo'; nombre: string; fecha: string }
   | { kind: 'duplicado'; nombre: string }
+  | { kind: 'suspendido'; nombre: string }
   | { kind: 'fuera_de_rango'; nombre: string; distM: number; radioM: number };
 
 // ─── Auth (panel) ────────────────────────────────────────────────────────────
@@ -80,6 +83,31 @@ export type EmployeeUpdateInput = z.infer<typeof employeeUpdateSchema>;
 // ─── Configuración del negocio ───────────────────────────────────────────────
 
 const timeRegex = /^\d{2}:\d{2}:\d{2}$/;
+
+export const businessCreateSchema = z.object({
+  slug: z.string().min(2).regex(/^[a-z0-9-]+$/, 'solo minúsculas, números y guiones'),
+  nombre: z.string().min(1),
+  timezone: z.string().default('America/Guayaquil'),
+  lat: z.number().nullable().optional(),
+  lng: z.number().nullable().optional(),
+  radioMetros: z.number().positive().default(80),
+  horaEntradaLv: z.string().regex(timeRegex).default('08:00:00'),
+  horaEntradaFds: z.string().regex(timeRegex).default('08:00:00'),
+  multaPorMin: z.number().nonnegative().default(0.1),
+  dayCutoffHour: z.number().int().min(0).max(23).default(2),
+  gpsRequerido: z.boolean().default(true),
+  branding: z
+    .object({
+      primary: z.string(),
+      accent: z.string(),
+      bg: z.string(),
+      card: z.string(),
+      logoUrl: z.string().optional(),
+    })
+    .default({ primary: '#43A047', accent: '#E53935', bg: '#0A1A0F', card: '#0F2417' }),
+  reportEmails: z.array(z.string().email()).default([]),
+});
+export type BusinessCreateInput = z.infer<typeof businessCreateSchema>;
 
 export const businessUpdateSchema = z.object({
   nombre: z.string().min(1).optional(),
