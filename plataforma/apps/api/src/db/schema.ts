@@ -24,6 +24,12 @@ export const businesses = pgTable('businesses', {
   multaPorMin: doublePrecision('multa_por_min').notNull().default(0.1),
   dayCutoffHour: integer('day_cutoff_hour').notNull().default(2),
   gpsRequerido: boolean('gps_requerido').notNull().default(true),
+  /** Controla salida/regreso de almuerzo. Si es false, solo entrada y salida. */
+  controlAlmuerzo: boolean('control_almuerzo').notNull().default(true),
+  /** Cobra multa por tardanza (pozo al más temprano). */
+  controlMultas: boolean('control_multas').notNull().default(true),
+  /** Otorga medallas y puntos por llegar temprano. */
+  controlMedallas: boolean('control_medallas').notNull().default(true),
   branding: jsonb('branding')
     .$type<BusinessBranding>()
     .notNull()

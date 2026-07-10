@@ -45,6 +45,12 @@ export interface Business {
   /** Hora (0-23) en que arranca el día operativo. Antes de esto cuenta como el día anterior. */
   dayCutoffHour: number;
   gpsRequerido: boolean;
+  /** Controla salida/regreso de almuerzo. */
+  controlAlmuerzo: boolean;
+  /** Cobra multa por tardanza. */
+  controlMultas: boolean;
+  /** Otorga medallas y puntos por llegar temprano. */
+  controlMedallas: boolean;
   branding: BusinessBranding;
   reportEmails: string[];
   /** Suscripción activa. Si es false, el negocio está suspendido. */

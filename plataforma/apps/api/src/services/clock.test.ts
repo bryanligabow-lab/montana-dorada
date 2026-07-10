@@ -7,7 +7,7 @@ import { eq } from 'drizzle-orm';
 import type { DB } from '../db';
 import { attendance, businesses, employees, punctuality } from '../db/schema';
 import * as schema from '../db/schema';
-import { clock, clockMotivo } from './clock';
+import { clock, clockMotivo, getClockContext } from './clock';
 
 async function setup(): Promise<DB> {
   const client = new PGlite();
@@ -125,6 +125,43 @@ describe('flujo de marcación (integración con PGlite)', () => {
     const out = await clock({ db, now: new Date('2026-06-29T22:00:00Z') }, { ...tok, action: 'salida' });
     expect(out?.kind).toBe('salida');
     if (out?.kind === 'salida') expect(out.horasTrabajadas).toBe('8h 00m');
+  });
+
+  it('respeta los interruptores del negocio (sin almuerzo, sin multas)', async () => {
+    const db = await setup();
+    const biz = (
+      await db
+        .insert(businesses)
+        .values({
+          slug: 'simple',
+          nombre: 'Simple',
+          timezone: 'America/Guayaquil',
+          radioMetros: 80,
+          horaEntradaLv: '08:00:00',
+          horaEntradaFds: '08:00:00',
+          multaPorMin: 0.1,
+          dayCutoffHour: 2,
+          gpsRequerido: false,
+          controlAlmuerzo: false,
+          controlMultas: false,
+          controlMedallas: false,
+        })
+        .returning()
+    )[0]!;
+    await db
+      .insert(employees)
+      .values({ businessId: biz.id, codigo: 'S1', qrToken: 'tokenSSSSSSSS', nombre: 'Sol' });
+
+    // Entrada tarde 09:00 (14:00Z): sin multas → es 'entrada' TARDE, sin pedir motivo ni medalla.
+    const r = await clock({ db, now: new Date('2026-06-29T14:00:00Z') }, { token: 'tokenSSSSSSSS', action: 'entrada' });
+    expect(r?.kind).toBe('entrada');
+    if (r?.kind === 'entrada') {
+      expect(r.estado).toBe('TARDE');
+      expect(r.medal).toBeNull();
+    }
+    // Sin control de almuerzo, la única acción siguiente es salir.
+    const ctx = await getClockContext(db, 'tokenSSSSSSSS', new Date('2026-06-29T14:30:00Z'));
+    expect(ctx?.acciones).toEqual(['salida']);
   });
 
   it('rechaza marcación fuera del rango GPS cuando el negocio lo exige', async () => {

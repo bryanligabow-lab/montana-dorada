@@ -28,9 +28,10 @@ async function resolve(db: DB, token: string): Promise<{ emp: Emp; biz: Biz } | 
 }
 
 /** Marcaciones que el empleado puede hacer ahora, según lo ya registrado hoy. */
-export function accionesDisponibles(row: Att | undefined): ClockAction[] {
+export function accionesDisponibles(row: Att | undefined, controlAlmuerzo: boolean): ClockAction[] {
   if (!row) return ['entrada'];
   if (row.salidaAt || row.horaSalida) return [];
+  if (!controlAlmuerzo) return ['salida'];
   if (!row.almuerzoSalidaAt && !row.horaAlmuerzoSalida) return ['almuerzo_salida', 'salida'];
   if (!row.almuerzoRegresoAt && !row.horaAlmuerzoRegreso) return ['almuerzo_regreso'];
   return ['salida'];
@@ -85,7 +86,7 @@ export async function getClockContext(
       horaLimiteHoy: horaLimite(biz, now),
     },
     employee: { nombre: emp.nombre, codigo: emp.codigo },
-    acciones: biz.activo ? accionesDisponibles(row) : [],
+    acciones: biz.activo ? accionesDisponibles(row, biz.controlAlmuerzo) : [],
     suspendido: !biz.activo,
   };
 }
@@ -109,7 +110,7 @@ export async function clock(
 
   const fecha = businessDate(now, biz.timezone, biz.dayCutoffHour);
   const existing = await rowDeHoy(db, emp.id, fecha);
-  const acciones = accionesDisponibles(existing);
+  const acciones = accionesDisponibles(existing, biz.controlAlmuerzo);
 
   if (acciones.length === 0) return { kind: 'completo', nombre: emp.nombre, fecha };
 
@@ -139,7 +140,9 @@ export async function clock(
       userAgent: ctx.ua ?? null,
     });
 
-    if (ev.estado === 'TARDE') {
+    const medal = biz.controlMedallas ? ev.medal : null;
+
+    if (ev.estado === 'TARDE' && biz.controlMultas) {
       const multa = computeMulta(ev.minTarde, biz.multaPorMin);
       return {
         kind: 'tardanza_motivo',
@@ -157,10 +160,14 @@ export async function clock(
       emp,
       fecha,
       hora,
-      minTarde: 0,
+      minTarde: ev.estado === 'TARDE' ? ev.minTarde : 0,
       minTemprano: ev.minTemprano,
-      nivel: ev.medal ? `${ev.medal.emoji} ${ev.medal.nombre}` : '⏰ A tiempo',
-      puntos: ev.medal?.puntos ?? 0,
+      nivel: medal
+        ? `${medal.emoji} ${medal.nombre}`
+        : ev.estado === 'TARDE'
+          ? '⚠️ Tarde'
+          : '⏰ A tiempo',
+      puntos: medal?.puntos ?? 0,
       multaPagada: 0,
     });
     const res: ClockResult = {
@@ -170,7 +177,7 @@ export async function clock(
       horaEntrada: hora,
       estado: ev.estado,
       minTemprano: ev.minTemprano,
-      medal: ev.medal,
+      medal,
     };
     notify(biz, emp, res);
     return res;

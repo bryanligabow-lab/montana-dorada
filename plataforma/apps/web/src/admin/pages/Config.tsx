@@ -36,6 +36,9 @@ export function Config() {
       lat: current.lat?.toString() ?? '',
       lng: current.lng?.toString() ?? '',
       gpsRequerido: current.gpsRequerido,
+      controlAlmuerzo: current.controlAlmuerzo,
+      controlMultas: current.controlMultas,
+      controlMedallas: current.controlMedallas,
       primary: current.branding.primary,
       accent: current.branding.accent,
       bg: current.branding.bg,
@@ -61,6 +64,9 @@ export function Config() {
       lat: f.lat ? Number(f.lat) : null,
       lng: f.lng ? Number(f.lng) : null,
       gpsRequerido: f.gpsRequerido,
+      controlAlmuerzo: f.controlAlmuerzo,
+      controlMultas: f.controlMultas,
+      controlMedallas: f.controlMedallas,
       branding: { primary: f.primary, accent: f.accent, bg: f.bg, card: f.card },
       reportEmails: f.reportEmails
         .split(',')
@@ -101,6 +107,22 @@ export function Config() {
             <input className={input} type="number" value={f.radioMetros} onChange={(e) => set('radioMetros', e.target.value)} />
           </Field>
         </div>
+      </Card>
+
+      <Card className="space-y-2">
+        <SectionTitle>¿Qué controla este negocio?</SectionTitle>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={f.controlAlmuerzo} onChange={(e) => set('controlAlmuerzo', e.target.checked)} />
+          Registrar salida y regreso de <b>almuerzo</b>
+        </label>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={f.controlMultas} onChange={(e) => set('controlMultas', e.target.checked)} />
+          Cobrar <b>multa por tardanza</b> (pozo al más temprano)
+        </label>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={f.controlMedallas} onChange={(e) => set('controlMedallas', e.target.checked)} />
+          Dar <b>medallas y puntos</b> por llegar temprano
+        </label>
       </Card>
 
       <Card className="space-y-3">

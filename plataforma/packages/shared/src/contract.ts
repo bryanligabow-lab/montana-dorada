@@ -96,6 +96,9 @@ export const businessCreateSchema = z.object({
   multaPorMin: z.number().nonnegative().default(0.1),
   dayCutoffHour: z.number().int().min(0).max(23).default(2),
   gpsRequerido: z.boolean().default(true),
+  controlAlmuerzo: z.boolean().default(true),
+  controlMultas: z.boolean().default(true),
+  controlMedallas: z.boolean().default(true),
   branding: z
     .object({
       primary: z.string(),
@@ -120,6 +123,9 @@ export const businessUpdateSchema = z.object({
   multaPorMin: z.number().nonnegative().optional(),
   dayCutoffHour: z.number().int().min(0).max(23).optional(),
   gpsRequerido: z.boolean().optional(),
+  controlAlmuerzo: z.boolean().optional(),
+  controlMultas: z.boolean().optional(),
+  controlMedallas: z.boolean().optional(),
   branding: z
     .object({
       primary: z.string(),

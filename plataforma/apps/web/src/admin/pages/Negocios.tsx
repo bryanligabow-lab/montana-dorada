@@ -116,6 +116,9 @@ function CrearNegocio({ onClose }: { onClose: () => void }) {
     horaEntradaFds: '08:00:00',
     multaPorMin: '0.10',
     gpsRequerido: true,
+    controlAlmuerzo: true,
+    controlMultas: true,
+    controlMedallas: true,
     lat: '',
     lng: '',
     radioMetros: '80',
@@ -140,6 +143,9 @@ function CrearNegocio({ onClose }: { onClose: () => void }) {
       multaPorMin: Number(f.multaPorMin),
       dayCutoffHour: 2,
       gpsRequerido: f.gpsRequerido,
+      controlAlmuerzo: f.controlAlmuerzo,
+      controlMultas: f.controlMultas,
+      controlMedallas: f.controlMedallas,
       lat: f.lat ? Number(f.lat) : null,
       lng: f.lng ? Number(f.lng) : null,
       radioMetros: Number(f.radioMetros),
@@ -203,6 +209,21 @@ function CrearNegocio({ onClose }: { onClose: () => void }) {
           </label>
         </div>
 
+        <div className="space-y-1">
+          <span className="block text-xs text-muted">¿Qué controla?</span>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={f.controlAlmuerzo} onChange={(e) => set('controlAlmuerzo', e.target.checked)} />
+            Almuerzo (salida/regreso)
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={f.controlMultas} onChange={(e) => set('controlMultas', e.target.checked)} />
+            Multa por tardanza
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={f.controlMedallas} onChange={(e) => set('controlMedallas', e.target.checked)} />
+            Medallas y puntos
+          </label>
+        </div>
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={f.gpsRequerido} onChange={(e) => set('gpsRequerido', e.target.checked)} />
           Exigir GPS (marcar solo dentro del local)
