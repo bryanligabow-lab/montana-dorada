@@ -1,6 +1,7 @@
 import { Link, Route, Routes } from 'react-router-dom';
 import { MarcarPage } from './marcar/MarcarPage';
 import { AdminApp } from './admin/AdminApp';
+import { OwnerApp } from './owner/OwnerApp';
 
 function Landing() {
   return (
@@ -13,6 +14,11 @@ function Landing() {
         <Link to="/admin" className="btn-brand inline-block px-5 py-3">
           Ir al panel
         </Link>
+        <div className="mt-4">
+          <Link to="/owner" className="text-xs text-muted hover:text-ink">
+            ¿Eres el dueño de la plataforma? Entra aquí →
+          </Link>
+        </div>
       </div>
     </div>
   );
@@ -23,6 +29,7 @@ export function App() {
     <Routes>
       <Route path="/marcar/:token" element={<MarcarPage />} />
       <Route path="/admin/*" element={<AdminApp />} />
+      <Route path="/owner/*" element={<OwnerApp />} />
       <Route path="*" element={<Landing />} />
     </Routes>
   );

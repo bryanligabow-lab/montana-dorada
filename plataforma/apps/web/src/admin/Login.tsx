@@ -2,7 +2,15 @@ import { useState } from 'react';
 import type { LoginResult } from '@asis/shared';
 import { api, ApiError, setToken } from '../lib/api';
 
-export function Login({ onLogin }: { onLogin: () => void }) {
+export function Login({
+  onLogin,
+  title = 'Panel de Asistencia',
+  subtitle = 'Ingresa con tu cuenta de administrador.',
+}: {
+  onLogin: () => void;
+  title?: string;
+  subtitle?: string;
+}) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [err, setErr] = useState('');
@@ -26,8 +34,8 @@ export function Login({ onLogin }: { onLogin: () => void }) {
   return (
     <div className="min-h-screen flex items-center justify-center p-5">
       <form onSubmit={submit} className="card w-full max-w-sm p-6">
-        <div className="text-xl font-black mb-1">Panel de Asistencia</div>
-        <p className="text-muted text-sm mb-5">Ingresa con tu cuenta de administrador.</p>
+        <div className="text-xl font-black mb-1">{title}</div>
+        <p className="text-muted text-sm mb-5">{subtitle}</p>
         <label className="block text-xs text-muted mb-1">Correo</label>
         <input
           type="email"

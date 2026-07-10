@@ -1,7 +1,8 @@
 import { useState, type ReactNode } from 'react';
+import { Link } from 'react-router-dom';
 import type { BusinessCreateInput } from '@asis/shared';
-import { useBusinesses, useCreateBusiness, useToggleBusiness } from '../queries';
-import { Card, Spinner } from '../ui';
+import { useBusinesses, useCreateBusiness, useToggleBusiness } from '../admin/queries';
+import { Card, Spinner } from '../admin/ui';
 
 function Overlay({ children, onClose }: { children: ReactNode; onClose: () => void }) {
   return (
@@ -48,12 +49,13 @@ export function Negocios() {
           <Spinner />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm min-w-[560px]">
+            <table className="w-full text-sm min-w-[640px]">
               <thead>
                 <tr className="text-muted text-left text-xs uppercase tracking-wide">
                   <th className="p-2">Negocio</th>
                   <th className="p-2 text-center">GPS</th>
                   <th className="p-2 text-center">Estado</th>
+                  <th className="p-2 text-right">Panel</th>
                   <th className="p-2 text-right">Acción</th>
                 </tr>
               </thead>
@@ -77,6 +79,11 @@ export function Negocios() {
                       >
                         {b.activo ? '● Activo' : '⏸ Suspendido'}
                       </span>
+                    </td>
+                    <td className="p-2 text-right">
+                      <Link to={`/admin?biz=${b.slug}`} className="chip px-3 py-1 text-xs inline-block">
+                        Entrar →
+                      </Link>
                     </td>
                     <td className="p-2 text-right">
                       <button

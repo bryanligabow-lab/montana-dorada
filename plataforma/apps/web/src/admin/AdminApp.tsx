@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { NavLink, Navigate, Route, Routes } from 'react-router-dom';
+import { Link, NavLink, Navigate, Route, Routes, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import type { Business, User } from '@asis/shared';
 import { api, getToken, setToken } from '../lib/api';
@@ -11,7 +11,6 @@ import { Asistencia } from './pages/Asistencia';
 import { Empleados } from './pages/Empleados';
 import { Auditoria } from './pages/Auditoria';
 import { Config } from './pages/Config';
-import { Negocios } from './pages/Negocios';
 
 export function AdminApp() {
   const [token, setTok] = useState(getToken());
@@ -31,14 +30,18 @@ function Shell({ onLogout }: { onLogout: () => void }) {
     queryKey: ['me'],
     queryFn: () => api<{ user: User; businesses: Business[] }>('/api/auth/me', { auth: true }),
   });
+  const [params] = useSearchParams();
   const [currentId, setCurrentId] = useState<string | null>(null);
 
   const businesses = me.data?.businesses ?? [];
   const current = businesses.find((b) => b.id === currentId) ?? businesses[0];
 
   useEffect(() => {
-    if (businesses.length && !currentId) setCurrentId(businesses[0]!.id);
-  }, [businesses, currentId]);
+    if (!businesses.length || currentId) return;
+    const wanted = params.get('biz');
+    const match = wanted ? businesses.find((b) => b.slug === wanted) : undefined;
+    setCurrentId((match ?? businesses[0])!.id);
+  }, [businesses, currentId, params]);
 
   useEffect(() => {
     if (current) applyBranding(current.branding);
@@ -76,14 +79,17 @@ const NAV = [
 
 function Layout() {
   const { businesses, current, setCurrentId, logout, user } = useAdmin();
-  const nav =
-    user.rol === 'OWNER' ? [{ to: 'negocios', label: '🏢 Negocios', end: false }, ...NAV] : NAV;
   return (
     <div className="min-h-screen md:flex">
       <aside className="md:w-60 md:min-h-screen border-b md:border-b-0 md:border-r border-white/10 p-4">
         <div className="font-black text-lg mb-3" style={{ color: 'var(--c-primary)' }}>
           {current.nombre}
         </div>
+        {user.rol === 'OWNER' && (
+          <Link to="/owner" className="block text-xs mb-3 text-muted hover:text-ink">
+            👑 Panel de dueño
+          </Link>
+        )}
         {businesses.length > 1 && (
           <select
             className="field w-full px-2 py-2 text-sm mb-4"
@@ -98,7 +104,7 @@ function Layout() {
           </select>
         )}
         <nav className="flex md:flex-col gap-1 flex-wrap">
-          {nav.map((n) => (
+          {NAV.map((n) => (
             <NavLink
               key={n.to}
               to={n.to}
@@ -118,7 +124,6 @@ function Layout() {
       <main className="flex-1 p-4 md:p-6 overflow-x-hidden">
         <Routes>
           <Route index element={<Ranking />} />
-          <Route path="negocios" element={<Negocios />} />
           <Route path="asistencia" element={<Asistencia />} />
           <Route path="empleados" element={<Empleados />} />
           <Route path="auditoria" element={<Auditoria />} />
