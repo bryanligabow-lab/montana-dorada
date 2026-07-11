@@ -186,3 +186,24 @@ export const nominaQuerySchema = z.object({
   to: z.string().regex(dateRegex),
 });
 export type NominaQuery = z.infer<typeof nominaQuerySchema>;
+
+// ─── Usuarios / accesos (solo OWNER) ─────────────────────────────────────────
+
+export const userCreateSchema = z.object({
+  email: z.string().email(),
+  nombre: z.string().min(1).max(80),
+  password: z.string().min(6).max(72),
+  businessIds: z.array(z.string().uuid()).min(1, 'Elige al menos un negocio'),
+});
+export type UserCreateInput = z.infer<typeof userCreateSchema>;
+
+export const userUpdateSchema = z.object({
+  nombre: z.string().min(1).max(80).optional(),
+  businessIds: z.array(z.string().uuid()).min(1).optional(),
+});
+export type UserUpdateInput = z.infer<typeof userUpdateSchema>;
+
+export const userResetPasswordSchema = z.object({
+  password: z.string().min(6).max(72),
+});
+export type UserResetPasswordInput = z.infer<typeof userResetPasswordSchema>;

@@ -161,6 +161,16 @@ export interface User {
   businessIds: string[];
 }
 
+/** Fila de la lista de usuarios del panel de dueño (nunca incluye la contraseña). */
+export interface PlatformUser {
+  id: string;
+  email: string;
+  nombre: string;
+  rol: Role;
+  businessIds: string[];
+  createdAt: string;
+}
+
 export interface AuditLog {
   id: string;
   businessId: string | null;

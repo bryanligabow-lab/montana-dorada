@@ -8,6 +8,7 @@ import { businessRoutes } from './routes/businesses';
 import { employeeRoutes } from './routes/employees';
 import { adminRoutes } from './routes/admin';
 import { importRoutes } from './routes/import';
+import { userRoutes } from './routes/users';
 
 export async function buildServer() {
   const app = Fastify({ logger: { level: env.isProd ? 'info' : 'warn' }, bodyLimit: 15 * 1024 * 1024 });
@@ -31,6 +32,7 @@ export async function buildServer() {
   await app.register(employeeRoutes);
   await app.register(adminRoutes);
   await app.register(importRoutes);
+  await app.register(userRoutes);
 
   return app;
 }

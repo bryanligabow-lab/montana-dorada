@@ -9,7 +9,10 @@ import type {
   EmployeeCreateInput,
   EmployeeUpdateInput,
   NominaRow,
+  PlatformUser,
   PunctualitySummary,
+  UserCreateInput,
+  UserUpdateInput,
 } from '@asis/shared';
 import { api } from '../lib/api';
 
@@ -149,5 +152,38 @@ export function useToggleBusiness() {
       qc.invalidateQueries({ queryKey: ['businesses'] });
       qc.invalidateQueries({ queryKey: ['me'] });
     },
+  });
+}
+
+// ── Panel de dueño (OWNER): usuarios/accesos por negocio ────────────────────
+export function useUsers() {
+  return useQuery({
+    queryKey: ['users'],
+    queryFn: () => api<PlatformUser[]>('/api/admin/users', { auth: true }),
+  });
+}
+
+export function useCreateUser() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: UserCreateInput) =>
+      api<PlatformUser>('/api/admin/users', { method: 'POST', body: data, auth: true }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['users'] }),
+  });
+}
+
+export function useUpdateUser() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: UserUpdateInput }) =>
+      api<PlatformUser>(`/api/admin/users/${id}`, { method: 'PATCH', body: data, auth: true }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['users'] }),
+  });
+}
+
+export function useResetPassword() {
+  return useMutation({
+    mutationFn: ({ id, password }: { id: string; password: string }) =>
+      api(`/api/admin/users/${id}/password`, { method: 'PATCH', body: { password }, auth: true }),
   });
 }

@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, NavLink, Navigate, Route, Routes } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import type { Business, User } from '@asis/shared';
 import { api, getToken, setToken } from '../lib/api';
 import { applyBranding } from '../lib/theme';
 import { Login } from '../admin/Login';
 import { Negocios } from './Negocios';
+import { Usuarios } from './Usuarios';
 
 // Tema fijo del Panel de Dueño: no depende de la marca de ningún negocio.
 const OWNER_THEME = { primary: '#D4AF37', accent: '#E53935', bg: '#0A0A0F', card: '#15151F' };
@@ -74,12 +75,35 @@ function OwnerShell({ onLogout }: { onLogout: () => void }) {
           👑 Panel de Dueño
         </div>
         <p className="text-muted text-xs mb-4">{me.data.user.nombre}</p>
+        <nav className="flex md:flex-col gap-1 flex-wrap mb-4">
+          <NavLink
+            to=""
+            end
+            className={({ isActive }) =>
+              `px-3 py-2 rounded-lg text-sm ${isActive ? 'btn-brand' : 'text-ink hover:bg-white/5'}`
+            }
+          >
+            🏢 Negocios
+          </NavLink>
+          <NavLink
+            to="usuarios"
+            className={({ isActive }) =>
+              `px-3 py-2 rounded-lg text-sm ${isActive ? 'btn-brand' : 'text-ink hover:bg-white/5'}`
+            }
+          >
+            👤 Usuarios
+          </NavLink>
+        </nav>
         <button onClick={onLogout} className="text-xs text-muted hover:text-ink">
           Salir
         </button>
       </aside>
       <main className="flex-1 p-4 md:p-6 overflow-x-hidden">
-        <Negocios />
+        <Routes>
+          <Route index element={<Negocios />} />
+          <Route path="usuarios" element={<Usuarios />} />
+          <Route path="*" element={<Navigate to="" replace />} />
+        </Routes>
       </main>
     </div>
   );
