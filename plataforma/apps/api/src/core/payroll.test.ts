@@ -102,18 +102,26 @@ describe('calcularNominaEmpleado — tipoSueldo DIARIO', () => {
 });
 
 describe('calcularNominaEmpleado — tipoSueldo FIJO', () => {
-  it('prorratea sueldoFijo mensual al largo exacto del rango elegido', () => {
+  it('paga el sueldoFijo completo cuando el rango es el mes calendario real, sin importar si tiene 28, 30 o 31 días', () => {
     const e = emp({ tipoSueldo: 'FIJO', sueldoFijo: 300, frecuenciaSueldo: 'MENSUAL' });
-    const r30 = calcularNominaEmpleado(e, BIZ, [], [], '2026-07-01', '2026-07-30'); // 30 días
-    expect(r30.sueldoBase).toBe(300);
-    const r15 = calcularNominaEmpleado(e, BIZ, [], [], '2026-07-01', '2026-07-15'); // 15 días → mitad
-    expect(r15.sueldoBase).toBe(150);
+    const rJulio = calcularNominaEmpleado(e, BIZ, [], [], '2026-07-01', '2026-07-31'); // julio: 31 días
+    expect(rJulio.sueldoBase).toBe(300);
+    const rFebrero = calcularNominaEmpleado(e, BIZ, [], [], '2026-02-01', '2026-02-28'); // febrero 2026: 28 días
+    expect(rFebrero.sueldoBase).toBe(300);
   });
 
-  it('prorratea sueldoFijo quincenal', () => {
+  it('prorratea sueldoFijo mensual a un rango parcial usando los días reales del mes de "from"', () => {
+    const e = emp({ tipoSueldo: 'FIJO', sueldoFijo: 310, frecuenciaSueldo: 'MENSUAL' });
+    const r15 = calcularNominaEmpleado(e, BIZ, [], [], '2026-07-01', '2026-07-15'); // 15 de 31 días de julio
+    expect(r15.sueldoBase).toBe(150); // 310 * 15/31
+  });
+
+  it('prorratea sueldoFijo quincenal (1-15 y 16-fin, aunque el mes tenga 31 días)', () => {
     const e = emp({ tipoSueldo: 'FIJO', sueldoFijo: 150, frecuenciaSueldo: 'QUINCENAL' });
-    const r = calcularNominaEmpleado(e, BIZ, [], [], '2026-07-01', '2026-07-15'); // 15 días = 1 quincena
-    expect(r.sueldoBase).toBe(150);
+    const rPrimera = calcularNominaEmpleado(e, BIZ, [], [], '2026-07-01', '2026-07-15'); // 15 días
+    expect(rPrimera.sueldoBase).toBe(150);
+    const rSegunda = calcularNominaEmpleado(e, BIZ, [], [], '2026-07-16', '2026-07-31'); // 16 días (julio tiene 31)
+    expect(rSegunda.sueldoBase).toBe(150);
   });
 });
 

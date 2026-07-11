@@ -76,11 +76,19 @@ export function Nomina() {
       </div>
 
       <div className="flex items-center gap-2 flex-wrap">
-        {ATAJOS.map((a) => (
-          <button key={a.label} className="chip px-3 py-1 text-xs" onClick={() => setRango(a.fn())}>
-            {a.label}
-          </button>
-        ))}
+        {ATAJOS.map((a) => {
+          const [af, at] = a.fn();
+          const activo = af === from && at === to;
+          return (
+            <button
+              key={a.label}
+              className={activo ? 'btn-brand px-3 py-1 text-xs' : 'chip px-3 py-1 text-xs'}
+              onClick={() => setRango(a.fn())}
+            >
+              {a.label}
+            </button>
+          );
+        })}
       </div>
 
       <Card>

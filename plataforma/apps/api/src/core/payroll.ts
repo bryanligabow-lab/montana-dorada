@@ -33,18 +33,33 @@ interface PuntRow {
   multaGanada: number;
 }
 
-const DIAS_TIPICOS: Record<FrecuenciaSueldo, number> = {
-  DIARIO: 1,
-  SEMANAL: 7,
-  QUINCENAL: 15,
-  MENSUAL: 30,
-};
-
 const round2 = (n: number): number => Math.round(n * 100) / 100;
 
 function esFinDeSemana(fecha: string): boolean {
   const key = scheduleKeyForFecha(fecha);
   return key === 'sabado' || key === 'domingo';
+}
+
+/** Días reales del mes calendario al que pertenece `fecha` ('yyyy-MM-dd'). */
+function diasEnMesDe(fecha: string): number {
+  const [y, m] = fecha.split('-').map(Number) as [number, number];
+  return new Date(Date.UTC(y, m, 0)).getUTCDate();
+}
+
+/**
+ * Días que representa un período completo de `frecuencia`, anclado al mes real de `from`.
+ * DIARIO y SEMANAL son siempre exactos (1 y 7). QUINCENAL y MENSUAL varían según el mes
+ * calendario real (28-31 días) — usar un número fijo (p.ej. 30) infla o reduce el sueldo
+ * fijo cada vez que el rango elegido no coincide con esa aproximación.
+ */
+function divisorFrecuencia(frecuencia: FrecuenciaSueldo, from: string): number {
+  if (frecuencia === 'DIARIO') return 1;
+  if (frecuencia === 'SEMANAL') return 7;
+  const diasMes = diasEnMesDe(from);
+  if (frecuencia === 'MENSUAL') return diasMes;
+  // QUINCENAL: 1-15 son siempre 15 días; 16-fin son los días que le quedan al mes.
+  const diaInicio = Number(from.split('-')[2]);
+  return diaInicio <= 15 ? 15 : diasMes - 15;
 }
 
 /** Días de calendario entre dos fechas 'yyyy-MM-dd', inclusive. */
@@ -117,7 +132,7 @@ export function calcularNominaEmpleado(
 
   if (emp.tipoSueldo === 'FIJO') {
     const dias = diasEnRango(from, to);
-    sueldoBase = emp.sueldoFijo * (dias / DIAS_TIPICOS[emp.frecuenciaSueldo]);
+    sueldoBase = emp.sueldoFijo * (dias / divisorFrecuencia(emp.frecuenciaSueldo, from));
   }
 
   // Tarifa/hora promedio para empleados FIJO (usa el sueldo del período contra su jornada esperada).
