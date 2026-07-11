@@ -9,7 +9,17 @@ import {
   jsonb,
   unique,
 } from 'drizzle-orm/pg-core';
-import type { AttendanceState, BusinessBranding, EmployeeStatus, Role } from '@asis/shared';
+import type { AttendanceState, BusinessBranding, EmployeeStatus, Role, WeekSchedule } from '@asis/shared';
+
+const DEFAULT_HORARIOS: WeekSchedule = {
+  lunes: '08:00:00',
+  martes: '08:00:00',
+  miercoles: '08:00:00',
+  jueves: '08:00:00',
+  viernes: '08:00:00',
+  sabado: '08:00:00',
+  domingo: '08:00:00',
+};
 
 export const businesses = pgTable('businesses', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -19,9 +29,12 @@ export const businesses = pgTable('businesses', {
   lat: doublePrecision('lat'),
   lng: doublePrecision('lng'),
   radioMetros: integer('radio_metros').notNull().default(80),
-  horaEntradaLv: text('hora_entrada_lv').notNull().default('08:00:00'),
-  horaEntradaFds: text('hora_entrada_fds').notNull().default('08:00:00'),
-  multaPorMin: doublePrecision('multa_por_min').notNull().default(0.1),
+  /** Hora límite de entrada por día de la semana. */
+  horarios: jsonb('horarios').$type<WeekSchedule>().notNull().default(DEFAULT_HORARIOS),
+  /** Monto por cada bloque de `multaIntervaloMin` minutos de retraso (o fracción). */
+  multaMonto: doublePrecision('multa_monto').notNull().default(0.1),
+  /** Tamaño del bloque en minutos para el cobro de la multa. 1 = por minuto exacto. */
+  multaIntervaloMin: integer('multa_intervalo_min').notNull().default(1),
   dayCutoffHour: integer('day_cutoff_hour').notNull().default(2),
   gpsRequerido: boolean('gps_requerido').notNull().default(true),
   /** Controla salida/regreso de almuerzo. Si es false, solo entrada y salida. */
@@ -35,6 +48,10 @@ export const businesses = pgTable('businesses', {
     .notNull()
     .default({ primary: '#43A047', accent: '#E53935', bg: '#0A1A0F', card: '#0F2417' }),
   reportEmails: jsonb('report_emails').$type<string[]>().notNull().default([]),
+  /** Números de WhatsApp que reciben los informes periódicos. */
+  reportWhatsapp: jsonb('report_whatsapp').$type<string[]>().notNull().default([]),
+  /** JID o número del grupo de WhatsApp notificado en cada marcación. Vacío = desactivado. */
+  whatsappGrupoId: text('whatsapp_grupo_id').notNull().default(''),
   /** Suscripción activa. Si es false, el negocio queda suspendido (nadie marca ni entra). */
   activo: boolean('activo').notNull().default(true),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

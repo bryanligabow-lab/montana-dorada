@@ -29,6 +29,20 @@
       "when": 1783699588240,
       "tag": "0003_minor_photon",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1783728545730,
+      "tag": "0004_wooden_black_bird",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1783728585439,
+      "tag": "0005_pink_gressill",
+      "breakpoints": true
     }
   ]
 }

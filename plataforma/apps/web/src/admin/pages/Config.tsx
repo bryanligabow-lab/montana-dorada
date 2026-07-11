@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { BusinessUpdateInput } from '@asis/shared';
+import type { BusinessUpdateInput, WeekSchedule } from '@asis/shared';
 import { useAdmin } from '../ctx';
 import { useUpdateBusiness } from '../queries';
 import { applyBranding } from '../../lib/theme';
@@ -20,6 +20,25 @@ function Field({
   );
 }
 
+const DIAS: { key: keyof WeekSchedule; label: string }[] = [
+  { key: 'lunes', label: 'Lunes' },
+  { key: 'martes', label: 'Martes' },
+  { key: 'miercoles', label: 'Miércoles' },
+  { key: 'jueves', label: 'Jueves' },
+  { key: 'viernes', label: 'Viernes' },
+  { key: 'sabado', label: 'Sábado' },
+  { key: 'domingo', label: 'Domingo' },
+];
+
+const INTERVALOS_MULTA = [
+  { min: 1, label: '1 min (por minuto exacto)' },
+  { min: 5, label: '5 min' },
+  { min: 10, label: '10 min' },
+  { min: 15, label: '15 min' },
+  { min: 30, label: '30 min' },
+  { min: 60, label: '60 min (por hora)' },
+];
+
 export function Config() {
   const { current } = useAdmin();
   const upd = useUpdateBusiness(current.id);
@@ -29,9 +48,9 @@ export function Config() {
   function init() {
     return {
       nombre: current.nombre,
-      horaEntradaLv: current.horaEntradaLv,
-      horaEntradaFds: current.horaEntradaFds,
-      multaPorMin: String(current.multaPorMin),
+      horarios: { ...current.horarios },
+      multaMonto: String(current.multaMonto),
+      multaIntervaloMin: String(current.multaIntervaloMin),
       radioMetros: String(current.radioMetros),
       lat: current.lat?.toString() ?? '',
       lng: current.lng?.toString() ?? '',
@@ -44,22 +63,32 @@ export function Config() {
       bg: current.branding.bg,
       card: current.branding.card,
       reportEmails: current.reportEmails.join(', '),
+      reportWhatsapp: current.reportWhatsapp.join(', '),
+      whatsappGrupoId: current.whatsappGrupoId,
     };
   }
   // Resetear el formulario al cambiar de negocio.
   useEffect(() => setF(init()), [current.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const set = (k: keyof ReturnType<typeof init>, v: string | boolean) =>
+  const set = (k: Exclude<keyof ReturnType<typeof init>, 'horarios'>, v: string | boolean) =>
     setF((prev) => ({ ...prev, [k]: v }));
+  const setHorario = (dia: keyof WeekSchedule, v: string) =>
+    setF((prev) => ({ ...prev, horarios: { ...prev.horarios, [dia]: v } }));
+  const copiarLunesATodos = () =>
+    setF((prev) => {
+      const lunes = prev.horarios.lunes;
+      const horarios = Object.fromEntries(DIAS.map((d) => [d.key, lunes])) as unknown as WeekSchedule;
+      return { ...prev, horarios };
+    });
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
     setMsg('');
     const data: BusinessUpdateInput = {
       nombre: f.nombre,
-      horaEntradaLv: f.horaEntradaLv,
-      horaEntradaFds: f.horaEntradaFds,
-      multaPorMin: Number(f.multaPorMin),
+      horarios: f.horarios,
+      multaMonto: Number(f.multaMonto),
+      multaIntervaloMin: Number(f.multaIntervaloMin),
       radioMetros: Number(f.radioMetros),
       lat: f.lat ? Number(f.lat) : null,
       lng: f.lng ? Number(f.lng) : null,
@@ -72,6 +101,11 @@ export function Config() {
         .split(',')
         .map((s) => s.trim())
         .filter(Boolean),
+      reportWhatsapp: f.reportWhatsapp
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean),
+      whatsappGrupoId: f.whatsappGrupoId.trim(),
     };
     try {
       await upd.mutateAsync(data);
@@ -93,19 +127,30 @@ export function Config() {
         <Field label="Nombre del negocio">
           <input className={input} value={f.nombre} onChange={(e) => set('nombre', e.target.value)} />
         </Field>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Hora límite L–V (HH:mm:ss)">
-            <input className={input} value={f.horaEntradaLv} onChange={(e) => set('horaEntradaLv', e.target.value)} />
-          </Field>
-          <Field label="Hora límite Sáb–Dom (HH:mm:ss)">
-            <input className={input} value={f.horaEntradaFds} onChange={(e) => set('horaEntradaFds', e.target.value)} />
-          </Field>
-          <Field label="Multa por minuto ($)">
-            <input className={input} type="number" step="0.01" value={f.multaPorMin} onChange={(e) => set('multaPorMin', e.target.value)} />
-          </Field>
-          <Field label="Radio GPS (metros)">
-            <input className={input} type="number" value={f.radioMetros} onChange={(e) => set('radioMetros', e.target.value)} />
-          </Field>
+        <Field label="Radio GPS (metros)">
+          <input className={input} type="number" value={f.radioMetros} onChange={(e) => set('radioMetros', e.target.value)} />
+        </Field>
+      </Card>
+
+      <Card className="space-y-3">
+        <div className="flex items-center justify-between gap-2">
+          <SectionTitle>Horario de entrada</SectionTitle>
+          <button type="button" className="chip px-3 py-1 text-xs" onClick={copiarLunesATodos}>
+            Copiar Lunes a todos
+          </button>
+        </div>
+        <p className="text-xs text-muted -mt-2">Hora límite de entrada por cada día (no tiene que ser la misma todos los días).</p>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {DIAS.map((d) => (
+            <Field key={d.key} label={d.label}>
+              <input
+                className={input}
+                type="time"
+                value={f.horarios[d.key].slice(0, 5)}
+                onChange={(e) => setHorario(d.key, e.target.value ? `${e.target.value}:00` : '00:00:00')}
+              />
+            </Field>
+          ))}
         </div>
       </Card>
 
@@ -119,6 +164,23 @@ export function Config() {
           <input type="checkbox" checked={f.controlMultas} onChange={(e) => set('controlMultas', e.target.checked)} />
           Cobrar <b>multa por tardanza</b> (pozo al más temprano)
         </label>
+        {f.controlMultas && (
+          <div className="grid grid-cols-2 gap-3 pl-6 pt-1">
+            <Field label="Monto de la multa ($)">
+              <input className={input} type="number" step="0.01" value={f.multaMonto} onChange={(e) => set('multaMonto', e.target.value)} />
+            </Field>
+            <Field label="Cada cuántos minutos">
+              <select className={input} value={f.multaIntervaloMin} onChange={(e) => set('multaIntervaloMin', e.target.value)}>
+                {INTERVALOS_MULTA.map((op) => (
+                  <option key={op.min} value={op.min}>{op.label}</option>
+                ))}
+              </select>
+            </Field>
+            <p className="text-xs text-muted col-span-2 -mt-1">
+              Se cobra el bloque completo aunque falte poco: con ${f.multaMonto || '0'} cada {f.multaIntervaloMin} min, llegar 1 min tarde dentro del bloque ya cuesta ${f.multaMonto || '0'}.
+            </p>
+          </div>
+        )}
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={f.controlMedallas} onChange={(e) => set('controlMedallas', e.target.checked)} />
           Dar <b>medallas y puntos</b> por llegar temprano
@@ -160,6 +222,15 @@ export function Config() {
         <Field label="Correos para reportes (separados por coma)">
           <input className={input} value={f.reportEmails} onChange={(e) => set('reportEmails', e.target.value)} />
         </Field>
+        <Field label="WhatsApp para informes periódicos (separados por coma)">
+          <input className={input} value={f.reportWhatsapp} onChange={(e) => set('reportWhatsapp', e.target.value)} placeholder="0991234567" />
+        </Field>
+        <Field label="ID del grupo de WhatsApp (avisa en cada marcación)">
+          <input className={input} value={f.whatsappGrupoId} onChange={(e) => set('whatsappGrupoId', e.target.value)} placeholder="120363...@g.us" />
+        </Field>
+        <p className="text-xs text-muted -mt-1">
+          Si todavía no tienes el ID del grupo conectado, déjalo vacío — se puede completar después.
+        </p>
       </Card>
 
       <div className="flex items-center gap-3">

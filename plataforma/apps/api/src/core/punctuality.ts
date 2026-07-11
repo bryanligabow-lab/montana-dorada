@@ -18,8 +18,15 @@ export function evalEntrada(horaActualMs: number, limiteMs: number): EntryEval {
   return { estado, minTarde, minTemprano, medal: medalFor(minTemprano) };
 }
 
-export function computeMulta(minTarde: number, multaPorMin: number): number {
-  return Math.round(minTarde * multaPorMin * 100) / 100;
+/**
+ * Cobra por bloque completo: cualquier fracción de un bloque de `intervaloMin`
+ * minutos de retraso cuenta como bloque entero (redondeo hacia arriba).
+ * Con intervaloMin=1 equivale al cobro clásico por minuto exacto.
+ */
+export function computeMulta(minTarde: number, monto: number, intervaloMin: number): number {
+  if (minTarde <= 0) return 0;
+  const bloques = Math.ceil(minTarde / intervaloMin);
+  return Math.round(bloques * monto * 100) / 100;
 }
 
 /**

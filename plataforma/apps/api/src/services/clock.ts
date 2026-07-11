@@ -51,6 +51,7 @@ function notify(biz: Biz, emp: Emp, result: ClockResult): void {
     empleado: emp.nombre,
     codigo: emp.codigo,
     reportEmails: biz.reportEmails,
+    whatsappGrupoId: biz.whatsappGrupoId,
     result,
   }).catch(() => {});
 }
@@ -143,7 +144,7 @@ export async function clock(
     const medal = biz.controlMedallas ? ev.medal : null;
 
     if (ev.estado === 'TARDE' && biz.controlMultas) {
-      const multa = computeMulta(ev.minTarde, biz.multaPorMin);
+      const multa = computeMulta(ev.minTarde, biz.multaMonto, biz.multaIntervaloMin);
       return {
         kind: 'tardanza_motivo',
         nombre: emp.nombre,
@@ -259,7 +260,7 @@ export async function clockMotivo(
   await db.update(attendance).set({ motivoTarde: input.motivo }).where(eq(attendance.id, row.id));
 
   const hora = row.horaEntrada ?? timeStrInTz(now, biz.timezone);
-  const multa = computeMulta(row.minTarde, biz.multaPorMin);
+  const multa = computeMulta(row.minTarde, biz.multaMonto, biz.multaIntervaloMin);
   await registrarPuntualidad(db, {
     biz,
     emp,

@@ -4,6 +4,7 @@ import type { DB } from '../db';
 import { businesses, employees, punctuality } from '../db/schema';
 import { businessDate, fechaDisplay } from '../core/time';
 import { sendMail } from './mailer';
+import { sendWhatsApp } from './whatsapp';
 import { env } from '../env';
 
 type Biz = typeof businesses.$inferSelect;
@@ -122,10 +123,29 @@ function esc(s: string): string {
   return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
+const MAX_FILAS_WHATSAPP = 15;
+
+function buildText(b: Biz, tipo: ReporteTipo, label: string, rows: PunctualitySummary[]): string {
+  const filas = rows
+    .slice(0, MAX_FILAS_WHATSAPP)
+    .map(
+      (r, i) =>
+        `${i + 1}. ${r.nombre} — ${r.dias}d · ${r.tempranos} temp · ${r.tardanzas} tarde · $${r.multaPagada.toFixed(2)} pagó · ${r.puntos}pts`,
+    )
+    .join('\n');
+  const resto = rows.length > MAX_FILAS_WHATSAPP ? `\n…y ${rows.length - MAX_FILAS_WHATSAPP} más` : '';
+  return `📊 REPORTE ${tipo} · ${b.nombre}\n${label}\n\n${filas || '(sin marcaciones)'}${resto}`;
+}
+
 export async function runReporte(db: DB, b: Biz, tipo: ReporteTipo): Promise<boolean> {
   const { from, to, label } = rangoReporte(tipo, b);
   const rows = await resumen(db, b.id, from, to);
   const to_ = b.reportEmails.length ? b.reportEmails : env.reportEmails;
   const html = buildHtml(b, tipo, label, rows);
-  return sendMail({ to: to_, subject: `Reporte ${tipo} · ${b.nombre} · ${label}`, html });
+
+  const resultados = await Promise.allSettled([
+    sendMail({ to: to_, subject: `Reporte ${tipo} · ${b.nombre} · ${label}`, html }),
+    ...b.reportWhatsapp.map((numero) => sendWhatsApp(buildText(b, tipo, label, rows), numero)),
+  ]);
+  return resultados.some((r) => r.status === 'fulfilled' && r.value === true);
 }

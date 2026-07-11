@@ -3,7 +3,7 @@ import { getDb } from './db';
 import { businesses, employees, users } from './db/schema';
 import { hashPassword } from './lib/auth';
 import { generateQrToken } from './lib/qr';
-import type { BusinessBranding } from '@asis/shared';
+import type { BusinessBranding, WeekSchedule } from '@asis/shared';
 
 interface SeedBiz {
   slug: string;
@@ -11,15 +11,25 @@ interface SeedBiz {
   lat: number | null;
   lng: number | null;
   radioMetros: number;
-  horaEntradaLv: string;
-  horaEntradaFds: string;
-  multaPorMin: number;
+  horarios: WeekSchedule;
+  multaMonto: number;
+  multaIntervaloMin: number;
   gpsRequerido: boolean;
   branding: BusinessBranding;
   reportEmails: string[];
   ejemploCodigo: string;
   ejemploNombre: string;
 }
+
+const todosLosDias = (hora: string): WeekSchedule => ({
+  lunes: hora,
+  martes: hora,
+  miercoles: hora,
+  jueves: hora,
+  viernes: hora,
+  sabado: hora,
+  domingo: hora,
+});
 
 const SEED: SeedBiz[] = [
   {
@@ -28,9 +38,9 @@ const SEED: SeedBiz[] = [
     lat: -3.677506,
     lng: -79.687398,
     radioMetros: 80,
-    horaEntradaLv: '08:00:00',
-    horaEntradaFds: '08:00:00',
-    multaPorMin: 0.1,
+    horarios: todosLosDias('08:00:00'),
+    multaMonto: 0.1,
+    multaIntervaloMin: 1,
     gpsRequerido: true,
     branding: { primary: '#43A047', accent: '#E53935', bg: '#0A1A0F', card: '#0F2417' },
     reportEmails: ['ginaapolo91@gmail.com', 'bryanligabow@gmail.com', 'javiercarrion591@gmail.com'],
@@ -43,9 +53,13 @@ const SEED: SeedBiz[] = [
     lat: null,
     lng: null,
     radioMetros: 150,
-    horaEntradaLv: '11:05:00',
-    horaEntradaFds: '10:35:00',
-    multaPorMin: 0.1,
+    horarios: {
+      ...todosLosDias('11:05:00'),
+      sabado: '10:35:00',
+      domingo: '10:35:00',
+    },
+    multaMonto: 0.1,
+    multaIntervaloMin: 1,
     gpsRequerido: false,
     branding: { primary: '#F57C00', accent: '#FFB347', bg: '#0A0A0A', card: '#1A0F0A' },
     reportEmails: ['bryanligabow@gmail.com'],
@@ -74,9 +88,9 @@ export async function runSeed(): Promise<void> {
           lat: s.lat,
           lng: s.lng,
           radioMetros: s.radioMetros,
-          horaEntradaLv: s.horaEntradaLv,
-          horaEntradaFds: s.horaEntradaFds,
-          multaPorMin: s.multaPorMin,
+          horarios: s.horarios,
+          multaMonto: s.multaMonto,
+          multaIntervaloMin: s.multaIntervaloMin,
           gpsRequerido: s.gpsRequerido,
           branding: s.branding,
           reportEmails: s.reportEmails,

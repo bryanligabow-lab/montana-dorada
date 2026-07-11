@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { AttendanceState, Business, BusinessBranding, ClockAction, MedalLevel, User } from './types';
+import type { AttendanceState, Business, BusinessBranding, ClockAction, MedalLevel, User, WeekSchedule } from './types';
 
 // ─── Marcación (PWA) ─────────────────────────────────────────────────────────
 
@@ -83,6 +83,26 @@ export type EmployeeUpdateInput = z.infer<typeof employeeUpdateSchema>;
 // ─── Configuración del negocio ───────────────────────────────────────────────
 
 const timeRegex = /^\d{2}:\d{2}:\d{2}$/;
+const horaDefault = '08:00:00';
+const DEFAULT_HORARIOS: WeekSchedule = {
+  lunes: horaDefault,
+  martes: horaDefault,
+  miercoles: horaDefault,
+  jueves: horaDefault,
+  viernes: horaDefault,
+  sabado: horaDefault,
+  domingo: horaDefault,
+};
+
+const weekScheduleSchema = z.object({
+  lunes: z.string().regex(timeRegex),
+  martes: z.string().regex(timeRegex),
+  miercoles: z.string().regex(timeRegex),
+  jueves: z.string().regex(timeRegex),
+  viernes: z.string().regex(timeRegex),
+  sabado: z.string().regex(timeRegex),
+  domingo: z.string().regex(timeRegex),
+});
 
 export const businessCreateSchema = z.object({
   slug: z.string().min(2).regex(/^[a-z0-9-]+$/, 'solo minúsculas, números y guiones'),
@@ -91,9 +111,11 @@ export const businessCreateSchema = z.object({
   lat: z.number().nullable().optional(),
   lng: z.number().nullable().optional(),
   radioMetros: z.number().positive().default(80),
-  horaEntradaLv: z.string().regex(timeRegex).default('08:00:00'),
-  horaEntradaFds: z.string().regex(timeRegex).default('08:00:00'),
-  multaPorMin: z.number().nonnegative().default(0.1),
+  horarios: weekScheduleSchema.default(DEFAULT_HORARIOS),
+  /** Monto por cada bloque de `multaIntervaloMin` minutos de retraso (o fracción). */
+  multaMonto: z.number().nonnegative().default(0.1),
+  /** Tamaño del bloque en minutos. 1 = por minuto exacto (comportamiento clásico). */
+  multaIntervaloMin: z.number().int().min(1).max(240).default(1),
   dayCutoffHour: z.number().int().min(0).max(23).default(2),
   gpsRequerido: z.boolean().default(true),
   controlAlmuerzo: z.boolean().default(true),
@@ -109,6 +131,10 @@ export const businessCreateSchema = z.object({
     })
     .default({ primary: '#43A047', accent: '#E53935', bg: '#0A1A0F', card: '#0F2417' }),
   reportEmails: z.array(z.string().email()).default([]),
+  /** Números de WhatsApp (formato libre) que reciben los informes periódicos. */
+  reportWhatsapp: z.array(z.string().min(6)).default([]),
+  /** JID o número del grupo de WhatsApp notificado en cada marcación. Vacío = desactivado. */
+  whatsappGrupoId: z.string().default(''),
 });
 export type BusinessCreateInput = z.infer<typeof businessCreateSchema>;
 
@@ -118,9 +144,9 @@ export const businessUpdateSchema = z.object({
   lat: z.number().nullable().optional(),
   lng: z.number().nullable().optional(),
   radioMetros: z.number().positive().optional(),
-  horaEntradaLv: z.string().regex(timeRegex).optional(),
-  horaEntradaFds: z.string().regex(timeRegex).optional(),
-  multaPorMin: z.number().nonnegative().optional(),
+  horarios: weekScheduleSchema.partial().optional(),
+  multaMonto: z.number().nonnegative().optional(),
+  multaIntervaloMin: z.number().int().min(1).max(240).optional(),
   dayCutoffHour: z.number().int().min(0).max(23).optional(),
   gpsRequerido: z.boolean().optional(),
   controlAlmuerzo: z.boolean().optional(),
@@ -137,5 +163,7 @@ export const businessUpdateSchema = z.object({
     .partial()
     .optional(),
   reportEmails: z.array(z.string().email()).optional(),
+  reportWhatsapp: z.array(z.string().min(6)).optional(),
+  whatsappGrupoId: z.string().optional(),
 });
 export type BusinessUpdateInput = z.infer<typeof businessUpdateSchema>;

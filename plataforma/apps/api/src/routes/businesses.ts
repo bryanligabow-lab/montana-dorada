@@ -34,9 +34,10 @@ export async function businessRoutes(app: FastifyInstance): Promise<void> {
     const current = (await db.select().from(businesses).where(eq(businesses.id, id)).limit(1))[0];
     if (!current) return reply.code(404).send({ error: 'no_encontrado' });
 
-    const { branding, ...rest } = parsed.data;
+    const { branding, horarios, ...rest } = parsed.data;
     const patch: Partial<typeof businesses.$inferInsert> = { ...rest };
     if (branding) patch.branding = { ...current.branding, ...branding };
+    if (horarios) patch.horarios = { ...current.horarios, ...horarios };
 
     await db.update(businesses).set(patch).where(eq(businesses.id, id));
     await writeAudit(db, {

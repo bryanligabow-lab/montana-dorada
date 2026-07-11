@@ -1,5 +1,6 @@
 // Manejo de fecha/hora en la zona horaria del negocio, sin dependencias.
 // Reemplaza Utilities.formatDate(date, ZONA, ...) de Apps Script usando Intl.
+import type { WeekSchedule } from '@asis/shared';
 
 const fmtCache = new Map<string, Intl.DateTimeFormat>();
 
@@ -90,11 +91,20 @@ export function isWeekend(date: Date, tz: string): boolean {
   return w === 0 || w === 6;
 }
 
-export function horaLimite(
-  b: { horaEntradaLv: string; horaEntradaFds: string; timezone: string },
-  now: Date,
-): string {
-  return isWeekend(now, b.timezone) ? b.horaEntradaFds : b.horaEntradaLv;
+/** `weekdayIdx` (0=domingo…6=sábado) a la clave del día en `WeekSchedule`. */
+const WEEKDAY_KEY = [
+  'domingo',
+  'lunes',
+  'martes',
+  'miercoles',
+  'jueves',
+  'viernes',
+  'sabado',
+] as const;
+
+export function horaLimite(b: { horarios: WeekSchedule; timezone: string }, now: Date): string {
+  const key = WEEKDAY_KEY[partsInTz(now, b.timezone).weekdayIdx]!;
+  return b.horarios[key];
 }
 
 /** Convierte 'HH:mm:ss' a milisegundos desde medianoche. */

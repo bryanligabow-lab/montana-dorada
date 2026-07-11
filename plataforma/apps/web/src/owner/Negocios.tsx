@@ -1,8 +1,27 @@
 import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import type { BusinessCreateInput } from '@asis/shared';
+import type { BusinessCreateInput, WeekSchedule } from '@asis/shared';
 import { useBusinesses, useCreateBusiness, useToggleBusiness } from '../admin/queries';
 import { Card, Spinner } from '../admin/ui';
+
+const DIAS: { key: keyof WeekSchedule; label: string }[] = [
+  { key: 'lunes', label: 'Lunes' },
+  { key: 'martes', label: 'Martes' },
+  { key: 'miercoles', label: 'Miércoles' },
+  { key: 'jueves', label: 'Jueves' },
+  { key: 'viernes', label: 'Viernes' },
+  { key: 'sabado', label: 'Sábado' },
+  { key: 'domingo', label: 'Domingo' },
+];
+
+const INTERVALOS_MULTA = [
+  { min: 1, label: '1 min (por minuto exacto)' },
+  { min: 5, label: '5 min' },
+  { min: 10, label: '10 min' },
+  { min: 15, label: '15 min' },
+  { min: 30, label: '30 min' },
+  { min: 60, label: '60 min (por hora)' },
+];
 
 function Overlay({ children, onClose }: { children: ReactNode; onClose: () => void }) {
   return (
@@ -119,9 +138,9 @@ function CrearNegocio({ onClose }: { onClose: () => void }) {
     nombre: '',
     slug: '',
     slugTouched: false,
-    horaEntradaLv: '08:00:00',
-    horaEntradaFds: '08:00:00',
-    multaPorMin: '0.10',
+    horarios: Object.fromEntries(DIAS.map((d) => [d.key, '08:00:00'])) as unknown as WeekSchedule,
+    multaMonto: '0.10',
+    multaIntervaloMin: '1',
     gpsRequerido: true,
     controlAlmuerzo: true,
     controlMultas: true,
@@ -134,8 +153,17 @@ function CrearNegocio({ onClose }: { onClose: () => void }) {
     bg: '#0A1A0F',
     card: '#0F2417',
     reportEmails: '',
+    reportWhatsapp: '',
+    whatsappGrupoId: '',
   });
-  const set = (k: keyof typeof f, v: string | boolean) => setF((p) => ({ ...p, [k]: v }));
+  const set = (k: Exclude<keyof typeof f, 'horarios'>, v: string | boolean) => setF((p) => ({ ...p, [k]: v }));
+  const setHorario = (dia: keyof WeekSchedule, v: string) =>
+    setF((p) => ({ ...p, horarios: { ...p.horarios, [dia]: v } }));
+  const copiarLunesATodos = () =>
+    setF((p) => ({
+      ...p,
+      horarios: Object.fromEntries(DIAS.map((d) => [d.key, p.horarios.lunes])) as unknown as WeekSchedule,
+    }));
   const input = 'field w-full px-3 py-2.5 text-sm';
 
   async function submit(e: React.FormEvent) {
@@ -145,9 +173,9 @@ function CrearNegocio({ onClose }: { onClose: () => void }) {
       nombre: f.nombre,
       slug: f.slug || slugify(f.nombre),
       timezone: 'America/Guayaquil',
-      horaEntradaLv: f.horaEntradaLv,
-      horaEntradaFds: f.horaEntradaFds,
-      multaPorMin: Number(f.multaPorMin),
+      horarios: f.horarios,
+      multaMonto: Number(f.multaMonto),
+      multaIntervaloMin: Number(f.multaIntervaloMin),
       dayCutoffHour: 2,
       gpsRequerido: f.gpsRequerido,
       controlAlmuerzo: f.controlAlmuerzo,
@@ -161,6 +189,11 @@ function CrearNegocio({ onClose }: { onClose: () => void }) {
         .split(',')
         .map((s) => s.trim())
         .filter(Boolean),
+      reportWhatsapp: f.reportWhatsapp
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean),
+      whatsappGrupoId: f.whatsappGrupoId.trim(),
     };
     try {
       await create.mutateAsync(data);
@@ -197,23 +230,31 @@ function CrearNegocio({ onClose }: { onClose: () => void }) {
           />
         </label>
 
-        <div className="grid grid-cols-2 gap-3">
-          <label className="block">
-            <span className="block text-xs text-muted mb-1">Hora límite L–V</span>
-            <input className={input} value={f.horaEntradaLv} onChange={(e) => set('horaEntradaLv', e.target.value)} />
-          </label>
-          <label className="block">
-            <span className="block text-xs text-muted mb-1">Hora límite Sáb–Dom</span>
-            <input className={input} value={f.horaEntradaFds} onChange={(e) => set('horaEntradaFds', e.target.value)} />
-          </label>
-          <label className="block">
-            <span className="block text-xs text-muted mb-1">Multa por minuto ($)</span>
-            <input className={input} type="number" step="0.01" value={f.multaPorMin} onChange={(e) => set('multaPorMin', e.target.value)} />
-          </label>
-          <label className="block">
-            <span className="block text-xs text-muted mb-1">Radio GPS (m)</span>
-            <input className={input} type="number" value={f.radioMetros} onChange={(e) => set('radioMetros', e.target.value)} />
-          </label>
+        <label className="block">
+          <span className="block text-xs text-muted mb-1">Radio GPS (m)</span>
+          <input className={input} type="number" value={f.radioMetros} onChange={(e) => set('radioMetros', e.target.value)} />
+        </label>
+
+        <div className="space-y-1">
+          <div className="flex items-center justify-between gap-2">
+            <span className="block text-xs text-muted">Horario de entrada por día</span>
+            <button type="button" className="chip px-2 py-0.5 text-xs" onClick={copiarLunesATodos}>
+              Copiar Lunes a todos
+            </button>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+            {DIAS.map((d) => (
+              <label key={d.key} className="block">
+                <span className="block text-xs text-muted mb-1">{d.label}</span>
+                <input
+                  className={input}
+                  type="time"
+                  value={f.horarios[d.key].slice(0, 5)}
+                  onChange={(e) => setHorario(d.key, e.target.value ? `${e.target.value}:00` : '00:00:00')}
+                />
+              </label>
+            ))}
+          </div>
         </div>
 
         <div className="space-y-1">
@@ -226,6 +267,22 @@ function CrearNegocio({ onClose }: { onClose: () => void }) {
             <input type="checkbox" checked={f.controlMultas} onChange={(e) => set('controlMultas', e.target.checked)} />
             Multa por tardanza
           </label>
+          {f.controlMultas && (
+            <div className="grid grid-cols-2 gap-3 pl-6">
+              <label className="block">
+                <span className="block text-xs text-muted mb-1">Monto ($)</span>
+                <input className={input} type="number" step="0.01" value={f.multaMonto} onChange={(e) => set('multaMonto', e.target.value)} />
+              </label>
+              <label className="block">
+                <span className="block text-xs text-muted mb-1">Cada cuántos minutos</span>
+                <select className={input} value={f.multaIntervaloMin} onChange={(e) => set('multaIntervaloMin', e.target.value)}>
+                  {INTERVALOS_MULTA.map((op) => (
+                    <option key={op.min} value={op.min}>{op.label}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          )}
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" checked={f.controlMedallas} onChange={(e) => set('controlMedallas', e.target.checked)} />
             Medallas y puntos
@@ -260,6 +317,14 @@ function CrearNegocio({ onClose }: { onClose: () => void }) {
         <label className="block">
           <span className="block text-xs text-muted mb-1">Correos para avisos (coma)</span>
           <input className={input} value={f.reportEmails} onChange={(e) => set('reportEmails', e.target.value)} />
+        </label>
+        <label className="block">
+          <span className="block text-xs text-muted mb-1">WhatsApp para informes (coma)</span>
+          <input className={input} value={f.reportWhatsapp} onChange={(e) => set('reportWhatsapp', e.target.value)} placeholder="0991234567" />
+        </label>
+        <label className="block">
+          <span className="block text-xs text-muted mb-1">ID del grupo de WhatsApp (opcional, se puede completar después)</span>
+          <input className={input} value={f.whatsappGrupoId} onChange={(e) => set('whatsappGrupoId', e.target.value)} placeholder="120363...@g.us" />
         </label>
 
         {err && <div className="text-sm" style={{ color: 'var(--c-accent)' }}>{err}</div>}

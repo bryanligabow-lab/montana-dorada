@@ -25,6 +25,8 @@ export async function notifyMarcacion(opts: {
   empleado: string;
   codigo: string;
   reportEmails: string[];
+  /** Grupo de WhatsApp del negocio (JID o número). Vacío = no se notifica por WhatsApp. */
+  whatsappGrupoId: string;
   result: ClockResult;
 }): Promise<void> {
   const linea = describe(opts.result);
@@ -40,6 +42,6 @@ export async function notifyMarcacion(opts: {
       html: `<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.6">${text.replace(/\n/g, '<br>')}</div>`,
       text,
     }),
-    sendWhatsApp(text),
+    opts.whatsappGrupoId ? sendWhatsApp(text, opts.whatsappGrupoId) : Promise.resolve(false),
   ]);
 }

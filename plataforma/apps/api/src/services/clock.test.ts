@@ -17,6 +17,19 @@ async function setup(): Promise<DB> {
   return db;
 }
 
+/** Mismo horario los 7 días (para tests que no dependen del día de la semana). */
+function horariosFijos(hora: string) {
+  return {
+    lunes: hora,
+    martes: hora,
+    miercoles: hora,
+    jueves: hora,
+    viernes: hora,
+    sabado: hora,
+    domingo: hora,
+  };
+}
+
 describe('flujo de marcación (integración con PGlite)', () => {
   it('entrada temprano da medalla; salida calcula horas; tardanza paga multa al más temprano', async () => {
     const db = await setup();
@@ -29,9 +42,9 @@ describe('flujo de marcación (integración con PGlite)', () => {
           nombre: 'Test',
           timezone: 'America/Guayaquil',
           radioMetros: 80,
-          horaEntradaLv: '08:00:00',
-          horaEntradaFds: '08:00:00',
-          multaPorMin: 0.1,
+          horarios: horariosFijos('08:00:00'),
+          multaMonto: 0.1,
+          multaIntervaloMin: 1,
           dayCutoffHour: 2,
           gpsRequerido: false,
         })
@@ -102,9 +115,9 @@ describe('flujo de marcación (integración con PGlite)', () => {
           nombre: 'Lunch',
           timezone: 'America/Guayaquil',
           radioMetros: 80,
-          horaEntradaLv: '08:00:00',
-          horaEntradaFds: '08:00:00',
-          multaPorMin: 0.1,
+          horarios: horariosFijos('08:00:00'),
+          multaMonto: 0.1,
+          multaIntervaloMin: 1,
           dayCutoffHour: 2,
           gpsRequerido: false,
         })
@@ -137,9 +150,9 @@ describe('flujo de marcación (integración con PGlite)', () => {
           nombre: 'Simple',
           timezone: 'America/Guayaquil',
           radioMetros: 80,
-          horaEntradaLv: '08:00:00',
-          horaEntradaFds: '08:00:00',
-          multaPorMin: 0.1,
+          horarios: horariosFijos('08:00:00'),
+          multaMonto: 0.1,
+          multaIntervaloMin: 1,
           dayCutoffHour: 2,
           gpsRequerido: false,
           controlAlmuerzo: false,
@@ -185,5 +198,77 @@ describe('flujo de marcación (integración con PGlite)', () => {
 
     const lejos = await clock({ db }, { token: 'tokenCCCCCCCC', lat: -3.7, lng: -79.7 });
     expect(lejos?.kind).toBe('fuera_de_rango');
+  });
+
+  it('cobra la multa por bloques completos (ej. cada 30 min), no por minuto exacto', async () => {
+    const db = await setup();
+    const biz = (
+      await db
+        .insert(businesses)
+        .values({
+          slug: 'bloques',
+          nombre: 'Bloques',
+          timezone: 'America/Guayaquil',
+          radioMetros: 80,
+          horarios: horariosFijos('08:00:00'),
+          multaMonto: 1,
+          multaIntervaloMin: 30,
+          dayCutoffHour: 2,
+          gpsRequerido: false,
+        })
+        .returning()
+    )[0]!;
+    await db.insert(employees).values([
+      { businessId: biz.id, codigo: 'B1', qrToken: 'tokenBLOQUEB1', nombre: 'Bruno' },
+      { businessId: biz.id, codigo: 'B2', qrToken: 'tokenBLOQUEC1', nombre: 'Carla' },
+    ]);
+
+    // Bruno: 5 min tarde (08:05) → primer bloque de 30 min → $1.
+    const r1 = await clock({ db, now: new Date('2026-06-29T13:05:00Z') }, { token: 'tokenBLOQUEB1', action: 'entrada' });
+    expect(r1?.kind).toBe('tardanza_motivo');
+    if (r1?.kind === 'tardanza_motivo') {
+      expect(r1.minTarde).toBe(5);
+      expect(r1.multa).toBe(1);
+    }
+
+    // Carla: 35 min tarde (08:35) → entra al 2º bloque de 30 min → $2.
+    const r2 = await clock({ db, now: new Date('2026-06-29T13:35:00Z') }, { token: 'tokenBLOQUEC1', action: 'entrada' });
+    expect(r2?.kind).toBe('tardanza_motivo');
+    if (r2?.kind === 'tardanza_motivo') {
+      expect(r2.minTarde).toBe(35);
+      expect(r2.multa).toBe(2);
+    }
+  });
+
+  it('usa el horario límite del día de la semana correspondiente, no uno fijo', async () => {
+    const db = await setup();
+    const biz = (
+      await db
+        .insert(businesses)
+        .values({
+          slug: 'semana',
+          nombre: 'Semana',
+          timezone: 'America/Guayaquil',
+          radioMetros: 80,
+          horarios: { ...horariosFijos('08:00:00'), martes: '10:00:00' },
+          multaMonto: 0.1,
+          multaIntervaloMin: 1,
+          dayCutoffHour: 2,
+          gpsRequerido: false,
+        })
+        .returning()
+    )[0]!;
+    await db
+      .insert(employees)
+      .values({ businessId: biz.id, codigo: 'W1', qrToken: 'tokenSEMANAW1', nombre: 'Wendy' });
+
+    // Lunes 29-jun (límite 08:00): entra 08:30 local (13:30Z) → TARDE.
+    const lunes = await clock({ db, now: new Date('2026-06-29T13:30:00Z') }, { token: 'tokenSEMANAW1', action: 'entrada' });
+    expect(lunes?.kind).toBe('tardanza_motivo');
+
+    // Martes 30-jun (límite 10:00, día distinto): mismo reloj 08:30 local (13:30Z) → TEMPRANO.
+    const martes = await clock({ db, now: new Date('2026-06-30T13:30:00Z') }, { token: 'tokenSEMANAW1', action: 'entrada' });
+    expect(martes?.kind).toBe('entrada');
+    if (martes?.kind === 'entrada') expect(martes.estado).toBe('TEMPRANO');
   });
 });

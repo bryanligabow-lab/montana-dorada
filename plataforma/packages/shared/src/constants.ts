@@ -28,9 +28,17 @@ export const MOTIVOS_TARDANZA = [
 export const DEFAULT_BUSINESS = {
   timezone: 'America/Guayaquil',
   radioMetros: 80,
-  horaEntradaLv: '08:00:00',
-  horaEntradaFds: '08:00:00',
-  multaPorMin: 0.1,
+  horarios: {
+    lunes: '08:00:00',
+    martes: '08:00:00',
+    miercoles: '08:00:00',
+    jueves: '08:00:00',
+    viernes: '08:00:00',
+    sabado: '08:00:00',
+    domingo: '08:00:00',
+  },
+  multaMonto: 0.1,
+  multaIntervaloMin: 1,
   dayCutoffHour: 2,
   gpsRequerido: true,
 } as const;

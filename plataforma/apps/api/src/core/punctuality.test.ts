@@ -27,9 +27,16 @@ describe('evalEntrada', () => {
 });
 
 describe('computeMulta', () => {
-  it('$0.10 por minuto, redondeado a centavos', () => {
-    expect(computeMulta(10, 0.1)).toBe(1);
-    expect(computeMulta(7, 0.1)).toBe(0.7);
+  it('$0.10 por minuto exacto (intervalo=1), redondeado a centavos', () => {
+    expect(computeMulta(10, 0.1, 1)).toBe(1);
+    expect(computeMulta(7, 0.1, 1)).toBe(0.7);
+  });
+
+  it('cobra por bloque completo cuando el intervalo es mayor a 1 minuto', () => {
+    expect(computeMulta(5, 1, 30)).toBe(1); // 1er bloque de 30, aunque falten 25 min
+    expect(computeMulta(30, 1, 30)).toBe(1); // justo al límite del bloque
+    expect(computeMulta(31, 1, 30)).toBe(2); // entra al 2º bloque
+    expect(computeMulta(0, 1, 30)).toBe(0); // sin tardanza, sin multa
   });
 });
 

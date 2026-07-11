@@ -29,6 +29,17 @@ export interface BusinessBranding {
   logoUrl?: string;
 }
 
+/** Hora límite de entrada ('HH:mm:ss') para cada día de la semana. */
+export interface WeekSchedule {
+  lunes: string;
+  martes: string;
+  miercoles: string;
+  jueves: string;
+  viernes: string;
+  sabado: string;
+  domingo: string;
+}
+
 export interface Business {
   id: string;
   slug: string;
@@ -37,11 +48,12 @@ export interface Business {
   lat: number | null;
   lng: number | null;
   radioMetros: number;
-  /** 'HH:mm:ss' — hora límite de entrada de lunes a viernes. */
-  horaEntradaLv: string;
-  /** 'HH:mm:ss' — hora límite de entrada sábado y domingo. */
-  horaEntradaFds: string;
-  multaPorMin: number;
+  /** Hora límite de entrada por día de la semana. */
+  horarios: WeekSchedule;
+  /** Monto que se cobra por cada bloque de `multaIntervaloMin` minutos de retraso (o fracción). */
+  multaMonto: number;
+  /** Tamaño del bloque en minutos para el cobro de la multa. 1 = por minuto exacto. */
+  multaIntervaloMin: number;
   /** Hora (0-23) en que arranca el día operativo. Antes de esto cuenta como el día anterior. */
   dayCutoffHour: number;
   gpsRequerido: boolean;
@@ -53,6 +65,10 @@ export interface Business {
   controlMedallas: boolean;
   branding: BusinessBranding;
   reportEmails: string[];
+  /** Números de WhatsApp que reciben los informes periódicos (diario/semanal/mensual). */
+  reportWhatsapp: string[];
+  /** JID o número del grupo de WhatsApp que se notifica en cada marcación (entrada/salida/almuerzo). */
+  whatsappGrupoId: string;
   /** Suscripción activa. Si es false, el negocio está suspendido. */
   activo: boolean;
   createdAt: string;
