@@ -62,9 +62,7 @@ function Shell({ onLogout }: { onLogout: () => void }) {
     );
 
   return (
-    <AdminContext.Provider
-      value={{ user: me.data.user, businesses, current, setCurrentId, logout: onLogout }}
-    >
+    <AdminContext.Provider value={{ user: me.data.user, current, logout: onLogout }}>
       <Layout />
     </AdminContext.Provider>
   );
@@ -80,7 +78,7 @@ const NAV = [
 ];
 
 function Layout() {
-  const { businesses, current, setCurrentId, logout, user } = useAdmin();
+  const { current, logout, user } = useAdmin();
   return (
     <div className="min-h-screen md:flex">
       <aside className="md:w-60 md:min-h-screen border-b md:border-b-0 md:border-r border-white/10 p-4">
@@ -91,19 +89,6 @@ function Layout() {
           <Link to="/owner" className="block text-xs mb-3 text-muted hover:text-ink">
             👑 Panel de dueño
           </Link>
-        )}
-        {businesses.length > 1 && (
-          <select
-            className="field w-full px-2 py-2 text-sm mb-4"
-            value={current.id}
-            onChange={(e) => setCurrentId(e.target.value)}
-          >
-            {businesses.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.nombre}
-              </option>
-            ))}
-          </select>
         )}
         <nav className="flex md:flex-col gap-1 flex-wrap">
           {NAV.map((n) => (
