@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
-import type { UserCreateInput } from '@asis/shared';
-import { useBusinesses, useCreateUser, useResetPassword, useUsers } from '../admin/queries';
+import type { PlatformUser, UserCreateInput } from '@asis/shared';
+import { useBusinesses, useCreateUser, useResetPassword, useUpdateUser, useUsers } from '../admin/queries';
 import { Card, Spinner } from '../admin/ui';
 import { ApiError } from '../lib/api';
 
@@ -22,6 +22,7 @@ export function Usuarios() {
   const list = useUsers();
   const businesses = useBusinesses();
   const [creating, setCreating] = useState(false);
+  const [editing, setEditing] = useState<PlatformUser | null>(null);
   const [resetFor, setResetFor] = useState<{ id: string; nombre: string } | null>(null);
 
   const nombreNegocio = (id: string) => businesses.data?.find((b) => b.id === id)?.nombre ?? '?';
@@ -63,11 +64,16 @@ export function Usuarios() {
                     <td className="p-2 text-xs text-muted">
                       {u.rol === 'OWNER' ? 'Todos' : u.businessIds.map(nombreNegocio).join(', ') || '—'}
                     </td>
-                    <td className="p-2 text-right">
+                    <td className="p-2 text-right whitespace-nowrap">
                       {u.rol !== 'OWNER' && (
-                        <button className="chip px-3 py-1 text-xs" onClick={() => setResetFor({ id: u.id, nombre: u.nombre })}>
-                          Restablecer contraseña
-                        </button>
+                        <>
+                          <button className="chip px-3 py-1 text-xs mr-1" onClick={() => setEditing(u)}>
+                            Editar
+                          </button>
+                          <button className="chip px-3 py-1 text-xs" onClick={() => setResetFor({ id: u.id, nombre: u.nombre })}>
+                            Restablecer contraseña
+                          </button>
+                        </>
                       )}
                     </td>
                   </tr>
@@ -86,6 +92,7 @@ export function Usuarios() {
       </Card>
 
       {creating && <CrearUsuario onClose={() => setCreating(false)} />}
+      {editing && <EditarUsuario user={editing} onClose={() => setEditing(null)} />}
       {resetFor && <ResetPassword user={resetFor} onClose={() => setResetFor(null)} />}
     </div>
   );
@@ -176,6 +183,65 @@ function CrearUsuario({ onClose }: { onClose: () => void }) {
         <div className="flex gap-2 pt-1">
           <button type="submit" className="btn-brand px-4 py-2 flex-1" disabled={create.isPending || f.businessIds.length === 0}>
             {create.isPending ? 'Creando…' : 'Crear usuario'}
+          </button>
+          <button type="button" className="chip px-4 py-2 flex-1" onClick={onClose}>
+            Cancelar
+          </button>
+        </div>
+      </form>
+    </Overlay>
+  );
+}
+
+function EditarUsuario({ user, onClose }: { user: PlatformUser; onClose: () => void }) {
+  const businesses = useBusinesses();
+  const update = useUpdateUser();
+  const [err, setErr] = useState('');
+  const [f, setF] = useState({ nombre: user.nombre, businessIds: user.businessIds });
+  const input = 'field w-full px-3 py-2.5 text-sm';
+
+  const toggleBiz = (id: string) =>
+    setF((p) => ({
+      ...p,
+      businessIds: p.businessIds.includes(id) ? p.businessIds.filter((x) => x !== id) : [...p.businessIds, id],
+    }));
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setErr('');
+    try {
+      await update.mutateAsync({ id: user.id, data: { nombre: f.nombre, businessIds: f.businessIds } });
+      onClose();
+    } catch {
+      setErr('No se pudo guardar (elige al menos un negocio).');
+    }
+  }
+
+  return (
+    <Overlay onClose={onClose}>
+      <form onSubmit={submit} className="space-y-3">
+        <div className="font-black text-lg">Editar usuario</div>
+        <label className="block">
+          <span className="block text-xs text-muted mb-1">Nombre</span>
+          <input className={input} value={f.nombre} onChange={(e) => setF({ ...f, nombre: e.target.value })} required />
+        </label>
+        <label className="block">
+          <span className="block text-xs text-muted mb-1">Correo (no se puede cambiar)</span>
+          <input className={input} value={user.email} disabled style={{ opacity: 0.6 }} />
+        </label>
+        <div className="space-y-1">
+          <span className="block text-xs text-muted">¿A qué negocio(s) entra?</span>
+          {(businesses.data ?? []).map((b) => (
+            <label key={b.id} className="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={f.businessIds.includes(b.id)} onChange={() => toggleBiz(b.id)} />
+              {b.nombre}
+            </label>
+          ))}
+        </div>
+        {err && <div className="text-sm" style={{ color: 'var(--c-accent)' }}>{err}</div>}
+        <div className="flex gap-2 pt-1">
+          <button type="submit" className="btn-brand px-4 py-2 flex-1" disabled={update.isPending || f.businessIds.length === 0}>
+            {update.isPending ? 'Guardando…' : 'Guardar'}
           </button>
           <button type="button" className="chip px-4 py-2 flex-1" onClick={onClose}>
             Cancelar

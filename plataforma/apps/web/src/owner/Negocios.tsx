@@ -99,9 +99,12 @@ export function Negocios() {
                         {b.activo ? '● Activo' : '⏸ Suspendido'}
                       </span>
                     </td>
-                    <td className="p-2 text-right">
-                      <Link to={`/admin?biz=${b.slug}`} className="chip px-3 py-1 text-xs inline-block">
+                    <td className="p-2 text-right whitespace-nowrap">
+                      <Link to={`/admin?biz=${b.slug}`} className="chip px-3 py-1 text-xs inline-block mr-1">
                         Entrar →
+                      </Link>
+                      <Link to={`/admin/config?biz=${b.slug}`} className="chip px-3 py-1 text-xs inline-block">
+                        Editar
                       </Link>
                     </td>
                     <td className="p-2 text-right">
