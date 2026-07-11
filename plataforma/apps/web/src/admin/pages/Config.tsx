@@ -49,6 +49,7 @@ export function Config() {
     return {
       nombre: current.nombre,
       horarios: { ...current.horarios },
+      horariosSalida: { ...current.horariosSalida },
       multaMonto: String(current.multaMonto),
       multaIntervaloMin: String(current.multaIntervaloMin),
       radioMetros: String(current.radioMetros),
@@ -70,15 +71,15 @@ export function Config() {
   // Resetear el formulario al cambiar de negocio.
   useEffect(() => setF(init()), [current.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const set = (k: Exclude<keyof ReturnType<typeof init>, 'horarios'>, v: string | boolean) =>
+  const set = (k: Exclude<keyof ReturnType<typeof init>, 'horarios' | 'horariosSalida'>, v: string | boolean) =>
     setF((prev) => ({ ...prev, [k]: v }));
-  const setHorario = (dia: keyof WeekSchedule, v: string) =>
-    setF((prev) => ({ ...prev, horarios: { ...prev.horarios, [dia]: v } }));
-  const copiarLunesATodos = () =>
+  const setHorario = (campo: 'horarios' | 'horariosSalida', dia: keyof WeekSchedule, v: string) =>
+    setF((prev) => ({ ...prev, [campo]: { ...prev[campo], [dia]: v } }));
+  const copiarLunesATodos = (campo: 'horarios' | 'horariosSalida') =>
     setF((prev) => {
-      const lunes = prev.horarios.lunes;
-      const horarios = Object.fromEntries(DIAS.map((d) => [d.key, lunes])) as unknown as WeekSchedule;
-      return { ...prev, horarios };
+      const lunes = prev[campo].lunes;
+      const horario = Object.fromEntries(DIAS.map((d) => [d.key, lunes])) as unknown as WeekSchedule;
+      return { ...prev, [campo]: horario };
     });
 
   async function save(e: React.FormEvent) {
@@ -87,6 +88,7 @@ export function Config() {
     const data: BusinessUpdateInput = {
       nombre: f.nombre,
       horarios: f.horarios,
+      horariosSalida: f.horariosSalida,
       multaMonto: Number(f.multaMonto),
       multaIntervaloMin: Number(f.multaIntervaloMin),
       radioMetros: Number(f.radioMetros),
@@ -135,7 +137,7 @@ export function Config() {
       <Card className="space-y-3">
         <div className="flex items-center justify-between gap-2">
           <SectionTitle>Horario de entrada</SectionTitle>
-          <button type="button" className="chip px-3 py-1 text-xs" onClick={copiarLunesATodos}>
+          <button type="button" className="chip px-3 py-1 text-xs" onClick={() => copiarLunesATodos('horarios')}>
             Copiar Lunes a todos
           </button>
         </div>
@@ -147,7 +149,29 @@ export function Config() {
                 className={input}
                 type="time"
                 value={f.horarios[d.key].slice(0, 5)}
-                onChange={(e) => setHorario(d.key, e.target.value ? `${e.target.value}:00` : '00:00:00')}
+                onChange={(e) => setHorario('horarios', d.key, e.target.value ? `${e.target.value}:00` : '00:00:00')}
+              />
+            </Field>
+          ))}
+        </div>
+      </Card>
+
+      <Card className="space-y-3">
+        <div className="flex items-center justify-between gap-2">
+          <SectionTitle>Horario de salida</SectionTitle>
+          <button type="button" className="chip px-3 py-1 text-xs" onClick={() => copiarLunesATodos('horariosSalida')}>
+            Copiar Lunes a todos
+          </button>
+        </div>
+        <p className="text-xs text-muted -mt-2">Hora de salida esperada por día — define el largo de la jornada para calcular horas extra.</p>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {DIAS.map((d) => (
+            <Field key={d.key} label={d.label}>
+              <input
+                className={input}
+                type="time"
+                value={f.horariosSalida[d.key].slice(0, 5)}
+                onChange={(e) => setHorario('horariosSalida', d.key, e.target.value ? `${e.target.value}:00` : '00:00:00')}
               />
             </Field>
           ))}

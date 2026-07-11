@@ -9,6 +9,7 @@ import { Login } from './Login';
 import { Ranking } from './pages/Ranking';
 import { Asistencia } from './pages/Asistencia';
 import { Empleados } from './pages/Empleados';
+import { Nomina } from './pages/Nomina';
 import { Auditoria } from './pages/Auditoria';
 import { Config } from './pages/Config';
 
@@ -73,6 +74,7 @@ const NAV = [
   { to: '', label: 'Ranking', end: true },
   { to: 'asistencia', label: 'Asistencia', end: false },
   { to: 'empleados', label: 'Empleados', end: false },
+  { to: 'nomina', label: 'Nómina', end: false },
   { to: 'auditoria', label: 'Auditoría', end: false },
   { to: 'config', label: 'Configuración', end: false },
 ];
@@ -126,6 +128,7 @@ function Layout() {
           <Route index element={<Ranking />} />
           <Route path="asistencia" element={<Asistencia />} />
           <Route path="empleados" element={<Empleados />} />
+          <Route path="nomina" element={<Nomina />} />
           <Route path="auditoria" element={<Auditoria />} />
           <Route path="config" element={<Config />} />
           <Route path="*" element={<Navigate to="" replace />} />

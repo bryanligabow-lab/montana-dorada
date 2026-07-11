@@ -8,6 +8,7 @@ import type {
   Employee,
   EmployeeCreateInput,
   EmployeeUpdateInput,
+  NominaRow,
   PunctualitySummary,
 } from '@asis/shared';
 import { api } from '../lib/api';
@@ -89,6 +90,14 @@ export function useAnomalies(bizId: string, params: Record<string, string | unde
     queryKey: ['anomalies', bizId, params],
     queryFn: () =>
       api<AttendanceRow[]>(`/api/admin/businesses/${bizId}/anomalies${qs(params)}`, { auth: true }),
+  });
+}
+
+export function useNomina(bizId: string, from: string, to: string) {
+  return useQuery({
+    queryKey: ['nomina', bizId, from, to],
+    queryFn: () => api<NominaRow[]>(`/api/admin/businesses/${bizId}/nomina${qs({ from, to })}`, { auth: true }),
+    enabled: !!from && !!to,
   });
 }
 

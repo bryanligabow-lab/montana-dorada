@@ -1,10 +1,12 @@
 import type { FastifyInstance } from 'fastify';
 import { and, desc, eq, gte, lte } from 'drizzle-orm';
+import { nominaQuerySchema } from '@asis/shared';
 import type { PunctualitySummary } from '@asis/shared';
 import { getDb } from '../db';
-import { attendance, auditLog, employees, punctuality } from '../db/schema';
+import { attendance, auditLog, businesses, employees, punctuality } from '../db/schema';
 import { toAttendance, toAuditLog } from '../lib/dto';
 import { canAccess, parseDateRange } from '../lib/http';
+import { calcularNominaEmpleado } from '../core/payroll';
 
 export async function adminRoutes(app: FastifyInstance): Promise<void> {
   // Asistencia (entradas/salidas) con nombre del empleado.
@@ -92,6 +94,42 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
         )
         .orderBy(desc(attendance.fecha));
       return rows.map((r) => ({ ...toAttendance(r.a), empNombre: r.empNombre, empCodigo: r.empCodigo }));
+    },
+  );
+
+  // Nómina: sueldo + horas extra + multas por empleado, en un rango de fechas.
+  app.get(
+    '/api/admin/businesses/:id/nomina',
+    { preHandler: [app.authenticate] },
+    async (req, reply) => {
+      const { id } = req.params as { id: string };
+      if (!(await canAccess(req, id))) return reply.code(403).send({ error: 'sin_acceso' });
+      const parsed = nominaQuerySchema.safeParse(req.query);
+      if (!parsed.success) return reply.code(400).send({ error: 'datos_invalidos' });
+      const { from, to } = parsed.data;
+
+      const db = await getDb();
+      const biz = (await db.select().from(businesses).where(eq(businesses.id, id)).limit(1))[0];
+      if (!biz) return reply.code(404).send({ error: 'no_encontrado' });
+
+      const emps = await db.select().from(employees).where(eq(employees.businessId, id));
+      const attRows = await db
+        .select()
+        .from(attendance)
+        .where(and(eq(attendance.businessId, id), gte(attendance.fecha, from), lte(attendance.fecha, to)));
+      const puntRows = await db
+        .select()
+        .from(punctuality)
+        .where(and(eq(punctuality.businessId, id), gte(punctuality.fecha, from), lte(punctuality.fecha, to)));
+
+      const attByEmp = new Map<string, typeof attRows>();
+      for (const a of attRows) attByEmp.set(a.employeeId, [...(attByEmp.get(a.employeeId) ?? []), a]);
+      const puntByEmp = new Map<string, typeof puntRows>();
+      for (const p of puntRows) puntByEmp.set(p.employeeId, [...(puntByEmp.get(p.employeeId) ?? []), p]);
+
+      return emps.map((e) =>
+        calcularNominaEmpleado(e, biz, attByEmp.get(e.id) ?? [], puntByEmp.get(e.id) ?? [], from, to),
+      );
     },
   );
 

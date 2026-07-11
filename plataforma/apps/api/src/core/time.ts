@@ -102,9 +102,23 @@ const WEEKDAY_KEY = [
   'sabado',
 ] as const;
 
+function scheduleKeyFor(now: Date, tz: string): keyof WeekSchedule {
+  return WEEKDAY_KEY[partsInTz(now, tz).weekdayIdx]!;
+}
+
+/** Día de la semana (misma llave que `WeekSchedule`) de una fecha operativa 'yyyy-MM-dd'. */
+export function scheduleKeyForFecha(fecha: string): keyof WeekSchedule {
+  const [y, m, d] = fecha.split('-').map(Number) as [number, number, number];
+  return WEEKDAY_KEY[new Date(Date.UTC(y, m - 1, d)).getUTCDay()]!;
+}
+
 export function horaLimite(b: { horarios: WeekSchedule; timezone: string }, now: Date): string {
-  const key = WEEKDAY_KEY[partsInTz(now, b.timezone).weekdayIdx]!;
-  return b.horarios[key];
+  return b.horarios[scheduleKeyFor(now, b.timezone)];
+}
+
+/** Hora de salida esperada del día (define el largo de la jornada para horas extra). */
+export function horaLimiteSalida(b: { horariosSalida: WeekSchedule; timezone: string }, now: Date): string {
+  return b.horariosSalida[scheduleKeyFor(now, b.timezone)];
 }
 
 /** Convierte 'HH:mm:ss' a milisegundos desde medianoche. */

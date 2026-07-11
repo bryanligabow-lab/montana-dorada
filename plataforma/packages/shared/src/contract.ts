@@ -71,6 +71,12 @@ export const employeeCreateSchema = z.object({
   nombre: z.string().min(1).max(80),
   sueldo: z.number().nonnegative().default(0),
   sueldoFds: z.number().nonnegative().default(0),
+  tipoSueldo: z.enum(['DIARIO', 'FIJO']).default('DIARIO'),
+  sueldoFijo: z.number().nonnegative().default(0),
+  frecuenciaSueldo: z.enum(['DIARIO', 'SEMANAL', 'QUINCENAL', 'MENSUAL']).default('MENSUAL'),
+  horaExtraTipo: z.enum(['PORCENTAJE', 'FIJO']).default('PORCENTAJE'),
+  /** Fracción (0.5 = 50%) si horaExtraTipo='PORCENTAJE', o $/hora si horaExtraTipo='FIJO'. */
+  horaExtraValor: z.number().nonnegative().default(0.5),
   estado: z.enum(['ACTIVO', 'INACTIVO']).default('ACTIVO'),
   deudaInicial: z.number().default(0),
   pin: z.string().max(8).optional(),
@@ -83,16 +89,17 @@ export type EmployeeUpdateInput = z.infer<typeof employeeUpdateSchema>;
 // ─── Configuración del negocio ───────────────────────────────────────────────
 
 const timeRegex = /^\d{2}:\d{2}:\d{2}$/;
-const horaDefault = '08:00:00';
-const DEFAULT_HORARIOS: WeekSchedule = {
-  lunes: horaDefault,
-  martes: horaDefault,
-  miercoles: horaDefault,
-  jueves: horaDefault,
-  viernes: horaDefault,
-  sabado: horaDefault,
-  domingo: horaDefault,
-};
+const todosLosDias = (hora: string): WeekSchedule => ({
+  lunes: hora,
+  martes: hora,
+  miercoles: hora,
+  jueves: hora,
+  viernes: hora,
+  sabado: hora,
+  domingo: hora,
+});
+const DEFAULT_HORARIOS: WeekSchedule = todosLosDias('08:00:00');
+const DEFAULT_HORARIOS_SALIDA: WeekSchedule = todosLosDias('17:00:00');
 
 const weekScheduleSchema = z.object({
   lunes: z.string().regex(timeRegex),
@@ -112,6 +119,8 @@ export const businessCreateSchema = z.object({
   lng: z.number().nullable().optional(),
   radioMetros: z.number().positive().default(80),
   horarios: weekScheduleSchema.default(DEFAULT_HORARIOS),
+  /** Hora de salida esperada por día (define el largo de la jornada para calcular horas extra). */
+  horariosSalida: weekScheduleSchema.default(DEFAULT_HORARIOS_SALIDA),
   /** Monto por cada bloque de `multaIntervaloMin` minutos de retraso (o fracción). */
   multaMonto: z.number().nonnegative().default(0.1),
   /** Tamaño del bloque en minutos. 1 = por minuto exacto (comportamiento clásico). */
@@ -145,6 +154,7 @@ export const businessUpdateSchema = z.object({
   lng: z.number().nullable().optional(),
   radioMetros: z.number().positive().optional(),
   horarios: weekScheduleSchema.partial().optional(),
+  horariosSalida: weekScheduleSchema.partial().optional(),
   multaMonto: z.number().nonnegative().optional(),
   multaIntervaloMin: z.number().int().min(1).max(240).optional(),
   dayCutoffHour: z.number().int().min(0).max(23).optional(),
@@ -167,3 +177,12 @@ export const businessUpdateSchema = z.object({
   whatsappGrupoId: z.string().optional(),
 });
 export type BusinessUpdateInput = z.infer<typeof businessUpdateSchema>;
+
+// ─── Nómina ──────────────────────────────────────────────────────────────────
+
+const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+export const nominaQuerySchema = z.object({
+  from: z.string().regex(dateRegex),
+  to: z.string().regex(dateRegex),
+});
+export type NominaQuery = z.infer<typeof nominaQuerySchema>;

@@ -139,6 +139,7 @@ function CrearNegocio({ onClose }: { onClose: () => void }) {
     slug: '',
     slugTouched: false,
     horarios: Object.fromEntries(DIAS.map((d) => [d.key, '08:00:00'])) as unknown as WeekSchedule,
+    horariosSalida: Object.fromEntries(DIAS.map((d) => [d.key, '17:00:00'])) as unknown as WeekSchedule,
     multaMonto: '0.10',
     multaIntervaloMin: '1',
     gpsRequerido: true,
@@ -156,13 +157,14 @@ function CrearNegocio({ onClose }: { onClose: () => void }) {
     reportWhatsapp: '',
     whatsappGrupoId: '',
   });
-  const set = (k: Exclude<keyof typeof f, 'horarios'>, v: string | boolean) => setF((p) => ({ ...p, [k]: v }));
-  const setHorario = (dia: keyof WeekSchedule, v: string) =>
-    setF((p) => ({ ...p, horarios: { ...p.horarios, [dia]: v } }));
-  const copiarLunesATodos = () =>
+  const set = (k: Exclude<keyof typeof f, 'horarios' | 'horariosSalida'>, v: string | boolean) =>
+    setF((p) => ({ ...p, [k]: v }));
+  const setHorario = (campo: 'horarios' | 'horariosSalida', dia: keyof WeekSchedule, v: string) =>
+    setF((p) => ({ ...p, [campo]: { ...p[campo], [dia]: v } }));
+  const copiarLunesATodos = (campo: 'horarios' | 'horariosSalida') =>
     setF((p) => ({
       ...p,
-      horarios: Object.fromEntries(DIAS.map((d) => [d.key, p.horarios.lunes])) as unknown as WeekSchedule,
+      [campo]: Object.fromEntries(DIAS.map((d) => [d.key, p[campo].lunes])) as unknown as WeekSchedule,
     }));
   const input = 'field w-full px-3 py-2.5 text-sm';
 
@@ -174,6 +176,7 @@ function CrearNegocio({ onClose }: { onClose: () => void }) {
       slug: f.slug || slugify(f.nombre),
       timezone: 'America/Guayaquil',
       horarios: f.horarios,
+      horariosSalida: f.horariosSalida,
       multaMonto: Number(f.multaMonto),
       multaIntervaloMin: Number(f.multaIntervaloMin),
       dayCutoffHour: 2,
@@ -238,7 +241,7 @@ function CrearNegocio({ onClose }: { onClose: () => void }) {
         <div className="space-y-1">
           <div className="flex items-center justify-between gap-2">
             <span className="block text-xs text-muted">Horario de entrada por día</span>
-            <button type="button" className="chip px-2 py-0.5 text-xs" onClick={copiarLunesATodos}>
+            <button type="button" className="chip px-2 py-0.5 text-xs" onClick={() => copiarLunesATodos('horarios')}>
               Copiar Lunes a todos
             </button>
           </div>
@@ -250,7 +253,29 @@ function CrearNegocio({ onClose }: { onClose: () => void }) {
                   className={input}
                   type="time"
                   value={f.horarios[d.key].slice(0, 5)}
-                  onChange={(e) => setHorario(d.key, e.target.value ? `${e.target.value}:00` : '00:00:00')}
+                  onChange={(e) => setHorario('horarios', d.key, e.target.value ? `${e.target.value}:00` : '00:00:00')}
+                />
+              </label>
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-1">
+          <div className="flex items-center justify-between gap-2">
+            <span className="block text-xs text-muted">Horario de salida por día</span>
+            <button type="button" className="chip px-2 py-0.5 text-xs" onClick={() => copiarLunesATodos('horariosSalida')}>
+              Copiar Lunes a todos
+            </button>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+            {DIAS.map((d) => (
+              <label key={d.key} className="block">
+                <span className="block text-xs text-muted mb-1">{d.label}</span>
+                <input
+                  className={input}
+                  type="time"
+                  value={f.horariosSalida[d.key].slice(0, 5)}
+                  onChange={(e) => setHorario('horariosSalida', d.key, e.target.value ? `${e.target.value}:00` : '00:00:00')}
                 />
               </label>
             ))}

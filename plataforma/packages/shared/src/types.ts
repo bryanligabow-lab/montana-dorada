@@ -3,6 +3,13 @@
 export type Role = 'OWNER' | 'ADMIN';
 export type EmployeeStatus = 'ACTIVO' | 'INACTIVO';
 
+/** ¿El sueldo se paga por cada día trabajado, o es un monto fijo que se repite cada período? */
+export type TipoSueldo = 'DIARIO' | 'FIJO';
+/** Cada cuánto se repite el sueldo fijo (o cada cuánto se acostumbra pagar). */
+export type FrecuenciaSueldo = 'DIARIO' | 'SEMANAL' | 'QUINCENAL' | 'MENSUAL';
+/** ¿La hora extra se calcula como % de recargo sobre la tarifa del empleado, o es un monto fijo por hora? */
+export type HoraExtraTipo = 'PORCENTAJE' | 'FIJO';
+
 /** Estado de la entrada respecto a la hora límite del negocio. */
 export type AttendanceState = 'TEMPRANO' | 'A_TIEMPO' | 'TARDE';
 
@@ -50,6 +57,8 @@ export interface Business {
   radioMetros: number;
   /** Hora límite de entrada por día de la semana. */
   horarios: WeekSchedule;
+  /** Hora de salida esperada por día de la semana (define el largo de la jornada para calcular horas extra). */
+  horariosSalida: WeekSchedule;
   /** Monto que se cobra por cada bloque de `multaIntervaloMin` minutos de retraso (o fracción). */
   multaMonto: number;
   /** Tamaño del bloque en minutos para el cobro de la multa. 1 = por minuto exacto. */
@@ -82,8 +91,19 @@ export interface Employee {
   /** Token secreto que viaja en el QR; no es el código visible. */
   qrToken: string;
   nombre: string;
+  /** Tarifa por día entre semana (si tipoSueldo='DIARIO'). */
   sueldo: number;
+  /** Tarifa por día sábado/domingo (si tipoSueldo='DIARIO'). */
   sueldoFds: number;
+  /** '"DIARIO"': sueldo/sueldoFds se multiplican por días trabajados. '"FIJO"': se paga sueldoFijo cada frecuenciaSueldo. */
+  tipoSueldo: TipoSueldo;
+  /** Monto fijo por período (si tipoSueldo='FIJO'). */
+  sueldoFijo: number;
+  /** Cada cuánto se paga (para prorratear sueldoFijo y para saber el ritmo de pago de este empleado). */
+  frecuenciaSueldo: FrecuenciaSueldo;
+  /** '"PORCENTAJE"': horaExtraValor es una fracción (0.5 = 50% de recargo) sobre su tarifa/hora. '"FIJO"': horaExtraValor es $/hora. */
+  horaExtraTipo: HoraExtraTipo;
+  horaExtraValor: number;
   estado: EmployeeStatus;
   deudaInicial: number;
   pin: string | null;
@@ -151,6 +171,23 @@ export interface AuditLog {
   entidadId: string | null;
   detalle: unknown;
   createdAt: string;
+}
+
+/** Fila de nómina de un empleado para un rango de fechas. */
+export interface NominaRow {
+  employeeId: string;
+  codigo: string;
+  nombre: string;
+  tipoSueldo: TipoSueldo;
+  diasTrabajados: number;
+  sueldoBase: number;
+  horasNormales: number;
+  horasExtra: number;
+  pagoHoraExtra: number;
+  multaPagada: number;
+  multaGanada: number;
+  /** sueldoBase + pagoHoraExtra + multaGanada - multaPagada. */
+  totalARecibir: number;
 }
 
 /** Fila agregada de ranking por empleado. */

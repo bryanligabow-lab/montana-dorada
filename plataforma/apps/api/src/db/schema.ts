@@ -9,17 +9,28 @@ import {
   jsonb,
   unique,
 } from 'drizzle-orm/pg-core';
-import type { AttendanceState, BusinessBranding, EmployeeStatus, Role, WeekSchedule } from '@asis/shared';
+import type {
+  AttendanceState,
+  BusinessBranding,
+  EmployeeStatus,
+  FrecuenciaSueldo,
+  HoraExtraTipo,
+  Role,
+  TipoSueldo,
+  WeekSchedule,
+} from '@asis/shared';
 
-const DEFAULT_HORARIOS: WeekSchedule = {
-  lunes: '08:00:00',
-  martes: '08:00:00',
-  miercoles: '08:00:00',
-  jueves: '08:00:00',
-  viernes: '08:00:00',
-  sabado: '08:00:00',
-  domingo: '08:00:00',
-};
+const todosLosDias = (hora: string): WeekSchedule => ({
+  lunes: hora,
+  martes: hora,
+  miercoles: hora,
+  jueves: hora,
+  viernes: hora,
+  sabado: hora,
+  domingo: hora,
+});
+const DEFAULT_HORARIOS: WeekSchedule = todosLosDias('08:00:00');
+const DEFAULT_HORARIOS_SALIDA: WeekSchedule = todosLosDias('17:00:00');
 
 export const businesses = pgTable('businesses', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -31,6 +42,8 @@ export const businesses = pgTable('businesses', {
   radioMetros: integer('radio_metros').notNull().default(80),
   /** Hora límite de entrada por día de la semana. */
   horarios: jsonb('horarios').$type<WeekSchedule>().notNull().default(DEFAULT_HORARIOS),
+  /** Hora de salida esperada por día (define el largo de la jornada para calcular horas extra). */
+  horariosSalida: jsonb('horarios_salida').$type<WeekSchedule>().notNull().default(DEFAULT_HORARIOS_SALIDA),
   /** Monto por cada bloque de `multaIntervaloMin` minutos de retraso (o fracción). */
   multaMonto: doublePrecision('multa_monto').notNull().default(0.1),
   /** Tamaño del bloque en minutos para el cobro de la multa. 1 = por minuto exacto. */
@@ -67,8 +80,18 @@ export const employees = pgTable(
     codigo: text('codigo').notNull(),
     qrToken: text('qr_token').notNull().unique(),
     nombre: text('nombre').notNull(),
+    /** Tarifa por día entre semana (si tipoSueldo='DIARIO'). */
     sueldo: doublePrecision('sueldo').notNull().default(0),
+    /** Tarifa por día sábado/domingo (si tipoSueldo='DIARIO'). */
     sueldoFds: doublePrecision('sueldo_fds').notNull().default(0),
+    /** 'DIARIO': sueldo/sueldoFds × días trabajados. 'FIJO': sueldoFijo cada frecuenciaSueldo. */
+    tipoSueldo: text('tipo_sueldo').$type<TipoSueldo>().notNull().default('DIARIO'),
+    /** Monto fijo por período (si tipoSueldo='FIJO'). */
+    sueldoFijo: doublePrecision('sueldo_fijo').notNull().default(0),
+    frecuenciaSueldo: text('frecuencia_sueldo').$type<FrecuenciaSueldo>().notNull().default('MENSUAL'),
+    /** 'PORCENTAJE': horaExtraValor es fracción de recargo sobre su tarifa/hora. 'FIJO': horaExtraValor es $/hora. */
+    horaExtraTipo: text('hora_extra_tipo').$type<HoraExtraTipo>().notNull().default('PORCENTAJE'),
+    horaExtraValor: doublePrecision('hora_extra_valor').notNull().default(0.5),
     estado: text('estado').$type<EmployeeStatus>().notNull().default('ACTIVO'),
     deudaInicial: doublePrecision('deuda_inicial').notNull().default(0),
     pin: text('pin'),

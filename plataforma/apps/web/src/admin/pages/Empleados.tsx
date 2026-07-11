@@ -14,11 +14,11 @@ import { Card, Spinner } from '../ui';
 function Overlay({ children, onClose }: { children: ReactNode; onClose: () => void }) {
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 flex items-start justify-center p-4 overflow-y-auto"
       style={{ background: 'rgba(0,0,0,.6)' }}
       onClick={onClose}
     >
-      <div className="card w-full max-w-sm p-5" onClick={(e) => e.stopPropagation()}>
+      <div className="card w-full max-w-sm p-5 my-8" onClick={(e) => e.stopPropagation()}>
         {children}
       </div>
     </div>
@@ -61,7 +61,11 @@ export function Empleados() {
                   <tr key={e.id} className="border-t border-white/5" style={{ opacity: e.estado === 'INACTIVO' ? 0.5 : 1 }}>
                     <td className="p-2 font-mono text-xs">{e.codigo}</td>
                     <td className="p-2 font-bold">{e.nombre}</td>
-                    <td className="p-2 text-right">${e.sueldo.toFixed(2)}</td>
+                    <td className="p-2 text-right">
+                      {e.tipoSueldo === 'FIJO'
+                        ? `$${e.sueldoFijo.toFixed(2)} / ${e.frecuenciaSueldo.toLowerCase()}`
+                        : `$${e.sueldo.toFixed(2)} / día`}
+                    </td>
                     <td className="p-2 text-center">{e.estado}</td>
                     <td className="p-2 text-right whitespace-nowrap">
                       <button className="chip px-2 py-1 text-xs mr-1" onClick={() => setQrFor(e)}>
@@ -124,6 +128,11 @@ function EmployeeModal({
     nombre: initial?.nombre ?? '',
     sueldo: String(initial?.sueldo ?? 0),
     sueldoFds: String(initial?.sueldoFds ?? 0),
+    tipoSueldo: initial?.tipoSueldo ?? 'DIARIO',
+    sueldoFijo: String(initial?.sueldoFijo ?? 0),
+    frecuenciaSueldo: initial?.frecuenciaSueldo ?? 'MENSUAL',
+    horaExtraTipo: initial?.horaExtraTipo ?? 'PORCENTAJE',
+    horaExtraValor: String(initial?.horaExtraValor ?? 0.5),
     pin: initial?.pin ?? '',
   });
   const [err, setErr] = useState('');
@@ -137,6 +146,11 @@ function EmployeeModal({
       nombre: f.nombre,
       sueldo: Number(f.sueldo),
       sueldoFds: Number(f.sueldoFds),
+      tipoSueldo: f.tipoSueldo,
+      sueldoFijo: Number(f.sueldoFijo),
+      frecuenciaSueldo: f.frecuenciaSueldo,
+      horaExtraTipo: f.horaExtraTipo,
+      horaExtraValor: Number(f.horaExtraValor),
       pin: f.pin || undefined,
     };
     try {
@@ -160,14 +174,54 @@ function EmployeeModal({
           <span className="block text-xs text-muted mb-1">Nombre</span>
           <input className={input} value={f.nombre} onChange={(e) => setF({ ...f, nombre: e.target.value })} required />
         </div>
+        <div>
+          <span className="block text-xs text-muted mb-1">Tipo de sueldo</span>
+          <select className={input} value={f.tipoSueldo} onChange={(e) => setF({ ...f, tipoSueldo: e.target.value as typeof f.tipoSueldo })}>
+            <option value="DIARIO">Por día trabajado</option>
+            <option value="FIJO">Fijo (se repite cada período)</option>
+          </select>
+        </div>
+        {f.tipoSueldo === 'DIARIO' ? (
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <span className="block text-xs text-muted mb-1">Sueldo por día</span>
+              <input className={input} type="number" step="0.01" value={f.sueldo} onChange={(e) => setF({ ...f, sueldo: e.target.value })} />
+            </div>
+            <div>
+              <span className="block text-xs text-muted mb-1">Sueldo fin de semana</span>
+              <input className={input} type="number" step="0.01" value={f.sueldoFds} onChange={(e) => setF({ ...f, sueldoFds: e.target.value })} />
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <span className="block text-xs text-muted mb-1">Sueldo fijo ($)</span>
+              <input className={input} type="number" step="0.01" value={f.sueldoFijo} onChange={(e) => setF({ ...f, sueldoFijo: e.target.value })} />
+            </div>
+            <div>
+              <span className="block text-xs text-muted mb-1">Cada cuánto</span>
+              <select className={input} value={f.frecuenciaSueldo} onChange={(e) => setF({ ...f, frecuenciaSueldo: e.target.value as typeof f.frecuenciaSueldo })}>
+                <option value="DIARIO">Diario</option>
+                <option value="SEMANAL">Semanal</option>
+                <option value="QUINCENAL">Quincenal</option>
+                <option value="MENSUAL">Mensual</option>
+              </select>
+            </div>
+          </div>
+        )}
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <span className="block text-xs text-muted mb-1">Sueldo</span>
-            <input className={input} type="number" step="0.01" value={f.sueldo} onChange={(e) => setF({ ...f, sueldo: e.target.value })} />
+            <span className="block text-xs text-muted mb-1">Hora extra</span>
+            <select className={input} value={f.horaExtraTipo} onChange={(e) => setF({ ...f, horaExtraTipo: e.target.value as typeof f.horaExtraTipo })}>
+              <option value="PORCENTAJE">% de recargo</option>
+              <option value="FIJO">Monto fijo por hora</option>
+            </select>
           </div>
           <div>
-            <span className="block text-xs text-muted mb-1">Sueldo fin de semana</span>
-            <input className={input} type="number" step="0.01" value={f.sueldoFds} onChange={(e) => setF({ ...f, sueldoFds: e.target.value })} />
+            <span className="block text-xs text-muted mb-1">
+              {f.horaExtraTipo === 'PORCENTAJE' ? 'Recargo (ej. 0.5 = 50%)' : '$ por hora extra'}
+            </span>
+            <input className={input} type="number" step="0.01" value={f.horaExtraValor} onChange={(e) => setF({ ...f, horaExtraValor: e.target.value })} />
           </div>
         </div>
         {err && <div className="text-sm" style={{ color: 'var(--c-accent)' }}>{err}</div>}
