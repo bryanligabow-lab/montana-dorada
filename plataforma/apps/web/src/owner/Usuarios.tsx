@@ -23,7 +23,7 @@ export function Usuarios() {
   const businesses = useBusinesses();
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<PlatformUser | null>(null);
-  const [resetFor, setResetFor] = useState<{ id: string; nombre: string } | null>(null);
+  const [resetFor, setResetFor] = useState<{ id: string; nombre: string; isOwner: boolean } | null>(null);
 
   const nombreNegocio = (id: string) => businesses.data?.find((b) => b.id === id)?.nombre ?? '?';
 
@@ -65,16 +65,15 @@ export function Usuarios() {
                       {u.rol === 'OWNER' ? 'Todos' : u.businessIds.map(nombreNegocio).join(', ') || '—'}
                     </td>
                     <td className="p-2 text-right whitespace-nowrap">
-                      {u.rol !== 'OWNER' && (
-                        <>
-                          <button className="chip px-3 py-1 text-xs mr-1" onClick={() => setEditing(u)}>
-                            Editar
-                          </button>
-                          <button className="chip px-3 py-1 text-xs" onClick={() => setResetFor({ id: u.id, nombre: u.nombre })}>
-                            Restablecer contraseña
-                          </button>
-                        </>
-                      )}
+                      <button className="chip px-3 py-1 text-xs mr-1" onClick={() => setEditing(u)}>
+                        Editar
+                      </button>
+                      <button
+                        className="chip px-3 py-1 text-xs"
+                        onClick={() => setResetFor({ id: u.id, nombre: u.nombre, isOwner: u.rol === 'OWNER' })}
+                      >
+                        Restablecer contraseña
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -194,6 +193,7 @@ function CrearUsuario({ onClose }: { onClose: () => void }) {
 }
 
 function EditarUsuario({ user, onClose }: { user: PlatformUser; onClose: () => void }) {
+  const isOwner = user.rol === 'OWNER';
   const businesses = useBusinesses();
   const update = useUpdateUser();
   const [err, setErr] = useState('');
@@ -210,7 +210,10 @@ function EditarUsuario({ user, onClose }: { user: PlatformUser; onClose: () => v
     e.preventDefault();
     setErr('');
     try {
-      await update.mutateAsync({ id: user.id, data: { nombre: f.nombre, businessIds: f.businessIds } });
+      await update.mutateAsync({
+        id: user.id,
+        data: isOwner ? { nombre: f.nombre } : { nombre: f.nombre, businessIds: f.businessIds },
+      });
       onClose();
     } catch {
       setErr('No se pudo guardar (elige al menos un negocio).');
@@ -220,7 +223,7 @@ function EditarUsuario({ user, onClose }: { user: PlatformUser; onClose: () => v
   return (
     <Overlay onClose={onClose}>
       <form onSubmit={submit} className="space-y-3">
-        <div className="font-black text-lg">Editar usuario</div>
+        <div className="font-black text-lg">Editar {isOwner ? 'mi cuenta' : 'usuario'}</div>
         <label className="block">
           <span className="block text-xs text-muted mb-1">Nombre</span>
           <input className={input} value={f.nombre} onChange={(e) => setF({ ...f, nombre: e.target.value })} required />
@@ -229,18 +232,20 @@ function EditarUsuario({ user, onClose }: { user: PlatformUser; onClose: () => v
           <span className="block text-xs text-muted mb-1">Correo (no se puede cambiar)</span>
           <input className={input} value={user.email} disabled style={{ opacity: 0.6 }} />
         </label>
-        <div className="space-y-1">
-          <span className="block text-xs text-muted">¿A qué negocio(s) entra?</span>
-          {(businesses.data ?? []).map((b) => (
-            <label key={b.id} className="flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={f.businessIds.includes(b.id)} onChange={() => toggleBiz(b.id)} />
-              {b.nombre}
-            </label>
-          ))}
-        </div>
+        {!isOwner && (
+          <div className="space-y-1">
+            <span className="block text-xs text-muted">¿A qué negocio(s) entra?</span>
+            {(businesses.data ?? []).map((b) => (
+              <label key={b.id} className="flex items-center gap-2 text-sm">
+                <input type="checkbox" checked={f.businessIds.includes(b.id)} onChange={() => toggleBiz(b.id)} />
+                {b.nombre}
+              </label>
+            ))}
+          </div>
+        )}
         {err && <div className="text-sm" style={{ color: 'var(--c-accent)' }}>{err}</div>}
         <div className="flex gap-2 pt-1">
-          <button type="submit" className="btn-brand px-4 py-2 flex-1" disabled={update.isPending || f.businessIds.length === 0}>
+          <button type="submit" className="btn-brand px-4 py-2 flex-1" disabled={update.isPending || (!isOwner && f.businessIds.length === 0)}>
             {update.isPending ? 'Guardando…' : 'Guardar'}
           </button>
           <button type="button" className="chip px-4 py-2 flex-1" onClick={onClose}>
@@ -252,7 +257,13 @@ function EditarUsuario({ user, onClose }: { user: PlatformUser; onClose: () => v
   );
 }
 
-function ResetPassword({ user, onClose }: { user: { id: string; nombre: string }; onClose: () => void }) {
+function ResetPassword({
+  user,
+  onClose,
+}: {
+  user: { id: string; nombre: string; isOwner: boolean };
+  onClose: () => void;
+}) {
   const reset = useResetPassword();
   const [password, setPassword] = useState('');
   const [done, setDone] = useState(false);
@@ -283,7 +294,9 @@ function ResetPassword({ user, onClose }: { user: { id: string; nombre: string }
   return (
     <Overlay onClose={onClose}>
       <form onSubmit={submit} className="space-y-3">
-        <div className="font-black text-lg">Restablecer contraseña de {user.nombre}</div>
+        <div className="font-black text-lg">
+          {user.isOwner ? 'Cambiar mi contraseña' : `Restablecer contraseña de ${user.nombre}`}
+        </div>
         <label className="block">
           <span className="block text-xs text-muted mb-1">Contraseña nueva</span>
           <input className={input} value={password} onChange={(e) => setPassword(e.target.value)} minLength={6} required autoFocus />
