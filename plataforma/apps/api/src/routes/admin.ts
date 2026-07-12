@@ -1,12 +1,14 @@
 import type { FastifyInstance } from 'fastify';
 import { and, desc, eq, gte, lte } from 'drizzle-orm';
-import { nominaQuerySchema } from '@asis/shared';
+import { attendanceUpdateSchema, nominaQuerySchema } from '@asis/shared';
 import type { PunctualitySummary } from '@asis/shared';
 import { getDb } from '../db';
 import { attendance, auditLog, businesses, employees, punctuality } from '../db/schema';
 import { toAttendance, toAuditLog } from '../lib/dto';
 import { canAccess, parseDateRange } from '../lib/http';
+import { writeAudit } from '../lib/audit';
 import { calcularNominaEmpleado } from '../core/payroll';
+import { deleteAttendanceRecord, findAttendance, updateAttendanceRecord } from '../services/attendance';
 
 export async function adminRoutes(app: FastifyInstance): Promise<void> {
   // Asistencia (entradas/salidas) con nombre del empleado.
@@ -27,6 +29,53 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
       return rows.map((r) => ({ ...toAttendance(r.a), empNombre: r.empNombre, empCodigo: r.empCodigo }));
     },
   );
+
+  // Editar un registro de asistencia (corrige horas cargadas mal o dejadas incompletas).
+  app.patch('/api/admin/attendance/:id', { preHandler: [app.authenticate] }, async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const db = await getDb();
+    const row = await findAttendance(db, id);
+    if (!row) return reply.code(404).send({ error: 'no_encontrado' });
+    if (!(await canAccess(req, row.businessId))) return reply.code(403).send({ error: 'sin_acceso' });
+
+    const parsed = attendanceUpdateSchema.safeParse(req.body);
+    if (!parsed.success) return reply.code(400).send({ error: 'datos_invalidos' });
+
+    const updated = await updateAttendanceRecord(db, row, parsed.data);
+    const emp = (await db.select().from(employees).where(eq(employees.id, row.employeeId)).limit(1))[0];
+    await writeAudit(db, {
+      businessId: row.businessId,
+      userId: req.user.sub,
+      actorNombre: req.user.nombre,
+      accion: 'update',
+      entidad: 'attendance',
+      entidadId: id,
+      detalle: { fecha: row.fecha, empleado: emp?.nombre, cambios: parsed.data },
+    });
+    return toAttendance(updated);
+  });
+
+  // Elimina un registro de asistencia (y su fila de puntualidad asociada, ver services/attendance.ts).
+  app.delete('/api/admin/attendance/:id', { preHandler: [app.authenticate] }, async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const db = await getDb();
+    const row = await findAttendance(db, id);
+    if (!row) return reply.code(404).send({ error: 'no_encontrado' });
+    if (!(await canAccess(req, row.businessId))) return reply.code(403).send({ error: 'sin_acceso' });
+    const emp = (await db.select().from(employees).where(eq(employees.id, row.employeeId)).limit(1))[0];
+
+    await deleteAttendanceRecord(db, row);
+    await writeAudit(db, {
+      businessId: row.businessId,
+      userId: req.user.sub,
+      actorNombre: req.user.nombre,
+      accion: 'delete',
+      entidad: 'attendance',
+      entidadId: id,
+      detalle: { fecha: row.fecha, empleado: emp?.nombre ?? row.employeeId, horaEntrada: row.horaEntrada },
+    });
+    return { ok: true };
+  });
 
   // Ranking de puntualidad (medallas y multas) agregado por empleado.
   app.get(

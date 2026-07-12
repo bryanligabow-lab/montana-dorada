@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { businessDate, formatDuration, hhmmssToMs, timeStrInTz } from './time';
+import { businessDate, formatDuration, hhmmssToMs, timeStrInTz, zonedTimeToUtc } from './time';
 
 const TZ = 'America/Guayaquil'; // UTC-5, sin horario de verano
 
@@ -34,6 +34,18 @@ describe('hhmmssToMs', () => {
   it('devuelve null para vacío o inválido', () => {
     expect(hhmmssToMs('')).toBeNull();
     expect(hhmmssToMs(null)).toBeNull();
+  });
+});
+
+describe('zonedTimeToUtc', () => {
+  it('es la inversa de timeStrInTz', () => {
+    const original = new Date('2026-06-27T13:05:09Z');
+    const reconstructed = zonedTimeToUtc('2026-06-27', timeStrInTz(original, TZ), TZ);
+    expect(reconstructed.getTime()).toBe(original.getTime());
+  });
+
+  it('reconstruye 08:00:00 local (Ecuador, UTC-5) como 13:00:00 UTC', () => {
+    expect(zonedTimeToUtc('2026-07-11', '08:00:00', TZ).toISOString()).toBe('2026-07-11T13:00:00.000Z');
   });
 });
 

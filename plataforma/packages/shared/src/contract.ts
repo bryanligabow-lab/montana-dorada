@@ -178,6 +178,16 @@ export const businessUpdateSchema = z.object({
 });
 export type BusinessUpdateInput = z.infer<typeof businessUpdateSchema>;
 
+// ─── Asistencia (corregir/eliminar un registro desde el panel) ───────────────
+
+export const attendanceUpdateSchema = z.object({
+  horaEntrada: z.string().regex(timeRegex).optional(),
+  horaSalida: z.string().regex(timeRegex).nullable().optional(),
+  horaAlmuerzoSalida: z.string().regex(timeRegex).nullable().optional(),
+  horaAlmuerzoRegreso: z.string().regex(timeRegex).nullable().optional(),
+});
+export type AttendanceUpdateInput = z.infer<typeof attendanceUpdateSchema>;
+
 // ─── Nómina ──────────────────────────────────────────────────────────────────
 
 const dateRegex = /^\d{4}-\d{2}-\d{2}$/;

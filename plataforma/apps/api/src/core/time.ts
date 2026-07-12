@@ -64,6 +64,22 @@ export function timeStrInTz(date: Date, tz: string): string {
 }
 
 /**
+ * Inversa de `partsInTz`: reconstruye el instante UTC de una fecha+hora
+ * locales ('yyyy-MM-dd' + 'HH:mm:ss') en la zona `tz`. Usa una corrección
+ * de una pasada contra el offset real (estable salvo en el instante exacto
+ * de un cambio de horario de verano, que Ecuador no usa).
+ */
+export function zonedTimeToUtc(fecha: string, hora: string, tz: string): Date {
+  const [y, m, d] = fecha.split('-').map(Number) as [number, number, number];
+  const [hh, mm, ss] = hora.split(':').map(Number) as [number, number, number];
+  const guess = new Date(Date.UTC(y, m - 1, d, hh, mm, ss || 0));
+  const p = partsInTz(guess, tz);
+  const seenAsUtc = Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second);
+  const offset = seenAsUtc - guess.getTime();
+  return new Date(guess.getTime() - offset);
+}
+
+/**
  * Día operativo en formato 'yyyy-MM-dd'. Si la hora local es anterior a
  * `cutoffHour`, cuenta como el día anterior (corte 02:00 por defecto).
  */

@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
   Attendance,
+  AttendanceUpdateInput,
   AuditLog,
   Business,
   BusinessCreateInput,
@@ -85,6 +86,31 @@ export function useAttendance(bizId: string, params: Record<string, string | und
     queryKey: ['attendance', bizId, params],
     queryFn: () =>
       api<AttendanceRow[]>(`/api/admin/businesses/${bizId}/attendance${qs(params)}`, { auth: true }),
+  });
+}
+
+/** Invalida todo lo que se deriva de attendance/punctuality (ranking, nómina, auditoría) además del listado. */
+function invalidateAttendanceDerived(qc: ReturnType<typeof useQueryClient>, bizId: string): void {
+  qc.invalidateQueries({ queryKey: ['attendance', bizId] });
+  qc.invalidateQueries({ queryKey: ['ranking', bizId] });
+  qc.invalidateQueries({ queryKey: ['nomina', bizId] });
+  qc.invalidateQueries({ queryKey: ['audit', bizId] });
+}
+
+export function useUpdateAttendance(bizId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: AttendanceUpdateInput }) =>
+      api<Attendance>(`/api/admin/attendance/${id}`, { method: 'PATCH', body: data, auth: true }),
+    onSuccess: () => invalidateAttendanceDerived(qc, bizId),
+  });
+}
+
+export function useDeleteAttendance(bizId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api(`/api/admin/attendance/${id}`, { method: 'DELETE', auth: true }),
+    onSuccess: () => invalidateAttendanceDerived(qc, bizId),
   });
 }
 

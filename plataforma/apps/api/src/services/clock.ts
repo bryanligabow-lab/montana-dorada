@@ -278,7 +278,7 @@ export async function clockMotivo(
   return res;
 }
 
-interface PuntInput {
+export interface PuntInput {
   biz: Biz;
   emp: Emp;
   fecha: string;
@@ -290,7 +290,8 @@ interface PuntInput {
   multaPagada: number;
 }
 
-async function registrarPuntualidad(db: DB, p: PuntInput): Promise<void> {
+/** Inserta/actualiza la fila de puntualidad del día y recalcula el pozo de multas. Reutilizado por la marcación en vivo y por la edición manual de un registro desde el panel. */
+export async function registrarPuntualidad(db: DB, p: PuntInput): Promise<void> {
   await db
     .insert(punctuality)
     .values({
