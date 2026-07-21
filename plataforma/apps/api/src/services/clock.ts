@@ -178,6 +178,7 @@ export async function clock(
       horaEntrada: hora,
       estado: ev.estado,
       minTemprano: ev.minTemprano,
+      minTarde: ev.estado === 'TARDE' ? ev.minTarde : 0,
       medal,
     };
     notify(biz, emp, res);
@@ -273,7 +274,16 @@ export async function clockMotivo(
     multaPagada: multa,
   });
 
-  const res: ClockResult = { kind: 'entrada', nombre: emp.nombre, fecha, horaEntrada: hora, estado: 'TARDE', minTemprano: 0, medal: null };
+  const res: ClockResult = {
+    kind: 'entrada',
+    nombre: emp.nombre,
+    fecha,
+    horaEntrada: hora,
+    estado: 'TARDE',
+    minTemprano: 0,
+    minTarde: row.minTarde,
+    medal: null,
+  };
   notify(biz, emp, res);
   return res;
 }

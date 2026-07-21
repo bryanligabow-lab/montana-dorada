@@ -39,7 +39,7 @@ export type ClockMotivoInput = z.infer<typeof clockMotivoSchema>;
 
 /** Resultado de una marcación. La PWA hace switch sobre `kind`. */
 export type ClockResult =
-  | { kind: 'entrada'; nombre: string; fecha: string; horaEntrada: string; estado: AttendanceState; minTemprano: number; medal: MedalLevel | null }
+  | { kind: 'entrada'; nombre: string; fecha: string; horaEntrada: string; estado: AttendanceState; minTemprano: number; minTarde: number; medal: MedalLevel | null }
   | { kind: 'tardanza_motivo'; nombre: string; fecha: string; horaEntrada: string; minTarde: number; multa: number; motivos: string[] }
   | { kind: 'salida'; nombre: string; fecha: string; horaEntrada: string; horaSalida: string; horasTrabajadas: string; estado: AttendanceState | null; minTarde: number }
   | { kind: 'almuerzo_salida'; nombre: string; fecha: string; hora: string }
