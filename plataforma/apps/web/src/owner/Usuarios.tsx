@@ -197,7 +197,7 @@ function EditarUsuario({ user, onClose }: { user: PlatformUser; onClose: () => v
   const businesses = useBusinesses();
   const update = useUpdateUser();
   const [err, setErr] = useState('');
-  const [f, setF] = useState({ nombre: user.nombre, businessIds: user.businessIds });
+  const [f, setF] = useState({ nombre: user.nombre, email: user.email, businessIds: user.businessIds });
   const input = 'field w-full px-3 py-2.5 text-sm';
 
   const toggleBiz = (id: string) =>
@@ -212,11 +212,17 @@ function EditarUsuario({ user, onClose }: { user: PlatformUser; onClose: () => v
     try {
       await update.mutateAsync({
         id: user.id,
-        data: isOwner ? { nombre: f.nombre } : { nombre: f.nombre, businessIds: f.businessIds },
+        data: isOwner
+          ? { nombre: f.nombre, email: f.email.trim() }
+          : { nombre: f.nombre, email: f.email.trim(), businessIds: f.businessIds },
       });
       onClose();
-    } catch {
-      setErr('No se pudo guardar (elige al menos un negocio).');
+    } catch (e2) {
+      setErr(
+        e2 instanceof ApiError && e2.code === 'correo_existe'
+          ? 'Ese usuario/correo ya está en uso.'
+          : 'No se pudo guardar (elige al menos un negocio).',
+      );
     }
   }
 
@@ -229,8 +235,14 @@ function EditarUsuario({ user, onClose }: { user: PlatformUser; onClose: () => v
           <input className={input} value={f.nombre} onChange={(e) => setF({ ...f, nombre: e.target.value })} required />
         </label>
         <label className="block">
-          <span className="block text-xs text-muted mb-1">Correo (no se puede cambiar)</span>
-          <input className={input} value={user.email} disabled style={{ opacity: 0.6 }} />
+          <span className="block text-xs text-muted mb-1">Usuario o correo de acceso</span>
+          <input
+            className={input}
+            value={f.email}
+            onChange={(e) => setF({ ...f, email: e.target.value })}
+            autoCapitalize="none"
+            required
+          />
         </label>
         {!isOwner && (
           <div className="space-y-1">

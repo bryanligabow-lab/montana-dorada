@@ -144,6 +144,9 @@ export function MarcarPage() {
               className="p-5 text-center"
               style={{ borderBottom: '1px solid rgba(255,255,255,.08)' }}
             >
+              {ctx.business.branding.logoUrl && (
+                <img src={ctx.business.branding.logoUrl} alt="" className="h-14 mx-auto mb-2 object-contain" />
+              )}
               <div className="text-xs font-extrabold tracking-wide" style={{ color: 'var(--c-primary)' }}>
                 {ctx.business.nombre.toUpperCase()}
               </div>

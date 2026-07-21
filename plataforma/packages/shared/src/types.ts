@@ -107,6 +107,8 @@ export interface Employee {
   estado: EmployeeStatus;
   deudaInicial: number;
   pin: string | null;
+  /** WhatsApp del empleado (para enviarle su recibo de nómina). */
+  telefono: string | null;
   createdAt: string;
 }
 
@@ -152,11 +154,12 @@ export interface Punctuality {
   createdAt: string;
 }
 
-/** Anticipo de sueldo entregado a un empleado; se descuenta de su nómina. */
+/** Descuento manual a un empleado (anticipo de sueldo o multa); se resta de su nómina. */
 export interface Advance {
   id: string;
   businessId: string;
   employeeId: string;
+  tipo: 'ANTICIPO' | 'MULTA';
   fecha: string;
   monto: number;
   nota: string | null;
@@ -206,11 +209,14 @@ export interface NominaRow {
   horasNormales: number;
   horasExtra: number;
   pagoHoraExtra: number;
+  /** Multa automática por tardanza (pozo de puntualidad). */
   multaPagada: number;
   multaGanada: number;
   /** Anticipos entregados en el rango (se restan del total). */
   anticipos: number;
-  /** sueldoBase + pagoHoraExtra + multaGanada - multaPagada - anticipos. */
+  /** Multas manuales registradas en el rango (se restan del total). */
+  multaManual: number;
+  /** sueldoBase + pagoHoraExtra + multaGanada - multaPagada - anticipos - multaManual. */
   totalARecibir: number;
 }
 

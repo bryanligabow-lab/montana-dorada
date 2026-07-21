@@ -3,11 +3,11 @@ import { and, desc, eq, gte, lte } from 'drizzle-orm';
 import { attendanceUpdateSchema, nominaQuerySchema } from '@asis/shared';
 import type { PunctualitySummary } from '@asis/shared';
 import { getDb } from '../db';
-import { advances, attendance, auditLog, businesses, employees, punctuality } from '../db/schema';
+import { attendance, auditLog, employees, punctuality } from '../db/schema';
 import { toAttendance, toAuditLog } from '../lib/dto';
 import { canAccess, parseDateRange } from '../lib/http';
 import { writeAudit } from '../lib/audit';
-import { calcularNominaEmpleado } from '../core/payroll';
+import { calcularNominaNegocio } from '../services/nomina';
 import { deleteAttendanceRecord, findAttendance, updateAttendanceRecord } from '../services/attendance';
 
 export async function adminRoutes(app: FastifyInstance): Promise<void> {
@@ -158,41 +158,9 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
       const { from, to } = parsed.data;
 
       const db = await getDb();
-      const biz = (await db.select().from(businesses).where(eq(businesses.id, id)).limit(1))[0];
-      if (!biz) return reply.code(404).send({ error: 'no_encontrado' });
-
-      const emps = await db.select().from(employees).where(eq(employees.businessId, id));
-      const attRows = await db
-        .select()
-        .from(attendance)
-        .where(and(eq(attendance.businessId, id), gte(attendance.fecha, from), lte(attendance.fecha, to)));
-      const puntRows = await db
-        .select()
-        .from(punctuality)
-        .where(and(eq(punctuality.businessId, id), gte(punctuality.fecha, from), lte(punctuality.fecha, to)));
-      const advRows = await db
-        .select()
-        .from(advances)
-        .where(and(eq(advances.businessId, id), gte(advances.fecha, from), lte(advances.fecha, to)));
-
-      const attByEmp = new Map<string, typeof attRows>();
-      for (const a of attRows) attByEmp.set(a.employeeId, [...(attByEmp.get(a.employeeId) ?? []), a]);
-      const puntByEmp = new Map<string, typeof puntRows>();
-      for (const p of puntRows) puntByEmp.set(p.employeeId, [...(puntByEmp.get(p.employeeId) ?? []), p]);
-      const advByEmp = new Map<string, typeof advRows>();
-      for (const a of advRows) advByEmp.set(a.employeeId, [...(advByEmp.get(a.employeeId) ?? []), a]);
-
-      return emps.map((e) =>
-        calcularNominaEmpleado(
-          e,
-          biz,
-          attByEmp.get(e.id) ?? [],
-          puntByEmp.get(e.id) ?? [],
-          from,
-          to,
-          advByEmp.get(e.id) ?? [],
-        ),
-      );
+      const res = await calcularNominaNegocio(db, id, from, to);
+      if (!res) return reply.code(404).send({ error: 'no_encontrado' });
+      return res.filas;
     },
   );
 

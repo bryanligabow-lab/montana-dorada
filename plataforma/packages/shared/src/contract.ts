@@ -53,7 +53,8 @@ export type ClockResult =
 // ─── Auth (panel) ────────────────────────────────────────────────────────────
 
 export const loginSchema = z.object({
-  email: z.string().email(),
+  // Acepta correo o usuario simple (p. ej. "Admin"); se compara en minúsculas contra users.email.
+  email: z.string().min(1).max(120),
   password: z.string().min(1),
 });
 export type LoginInput = z.infer<typeof loginSchema>;
@@ -80,6 +81,8 @@ export const employeeCreateSchema = z.object({
   estado: z.enum(['ACTIVO', 'INACTIVO']).default('ACTIVO'),
   deudaInicial: z.number().default(0),
   pin: z.string().max(8).optional(),
+  /** WhatsApp del empleado (formato libre), para enviarle su recibo de nómina. */
+  telefono: z.string().max(30).optional(),
 });
 export type EmployeeCreateInput = z.infer<typeof employeeCreateSchema>;
 
@@ -201,6 +204,7 @@ export type NominaQuery = z.infer<typeof nominaQuerySchema>;
 
 export const advanceCreateSchema = z.object({
   employeeId: z.string().uuid(),
+  tipo: z.enum(['ANTICIPO', 'MULTA']).default('ANTICIPO'),
   fecha: z.string().regex(dateRegex),
   monto: z.number().positive('El monto debe ser mayor a 0'),
   nota: z.string().max(200).optional(),
@@ -234,6 +238,8 @@ export type UserCreateInput = z.infer<typeof userCreateSchema>;
 
 export const userUpdateSchema = z.object({
   nombre: z.string().min(1).max(80).optional(),
+  /** Usuario/correo de acceso. Se guarda en minúsculas. */
+  email: z.string().min(1).max(120).optional(),
   businessIds: z.array(z.string().uuid()).min(1).optional(),
 });
 export type UserUpdateInput = z.infer<typeof userUpdateSchema>;

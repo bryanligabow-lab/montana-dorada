@@ -21,6 +21,7 @@ export async function sendMail(opts: {
   subject: string;
   html: string;
   text?: string;
+  attachments?: { filename: string; content: Buffer; contentType?: string }[];
 }): Promise<boolean> {
   const t = getTransporter();
   if (!t || opts.to.length === 0) return false;
@@ -30,6 +31,7 @@ export async function sendMail(opts: {
     subject: opts.subject,
     html: opts.html,
     text: opts.text,
+    attachments: opts.attachments,
   });
   return true;
 }

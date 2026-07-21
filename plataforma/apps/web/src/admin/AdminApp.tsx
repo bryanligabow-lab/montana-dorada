@@ -84,8 +84,13 @@ function Layout() {
   return (
     <div className="min-h-screen md:flex">
       <aside className="md:w-60 md:min-h-screen border-b md:border-b-0 md:border-r border-white/10 p-4">
-        <div className="font-black text-lg mb-3" style={{ color: 'var(--c-primary)' }}>
-          {current.nombre}
+        <div className="flex items-center gap-2 mb-3">
+          {current.branding.logoUrl && (
+            <img src={current.branding.logoUrl} alt="" className="h-9 w-9 object-contain rounded" />
+          )}
+          <div className="font-black text-lg" style={{ color: 'var(--c-primary)' }}>
+            {current.nombre}
+          </div>
         </div>
         {user.rol === 'OWNER' && (
           <Link to="/owner" className="block text-xs mb-3 text-muted hover:text-ink">

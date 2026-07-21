@@ -36,13 +36,14 @@ export function Login({
       <form onSubmit={submit} className="card w-full max-w-sm p-6">
         <div className="text-xl font-black mb-1">{title}</div>
         <p className="text-muted text-sm mb-5">{subtitle}</p>
-        <label className="block text-xs text-muted mb-1">Correo</label>
+        <label className="block text-xs text-muted mb-1">Usuario o correo</label>
         <input
-          type="email"
+          type="text"
           className="field w-full px-3 py-2.5 mb-3"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           autoComplete="username"
+          autoCapitalize="none"
           required
         />
         <label className="block text-xs text-muted mb-1">Contraseña</label>

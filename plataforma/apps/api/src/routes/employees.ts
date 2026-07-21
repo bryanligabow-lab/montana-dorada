@@ -50,6 +50,7 @@ export async function employeeRoutes(app: FastifyInstance): Promise<void> {
           deudaInicial: parsed.data.deudaInicial,
           // PIN de 4 dígitos para el portal del empleado: se autogenera si no se indicó uno.
           pin: parsed.data.pin || generate4DigitPin(),
+          telefono: parsed.data.telefono ?? null,
         })
         .returning();
       await writeAudit(db, {

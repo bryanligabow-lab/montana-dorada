@@ -34,6 +34,7 @@ interface PuntRow {
 }
 
 interface AdvanceRow {
+  tipo: 'ANTICIPO' | 'MULTA';
   monto: number;
 }
 
@@ -161,8 +162,10 @@ export function calcularNominaEmpleado(
 
   const multaPagada = punctuality.reduce((s, p) => s + p.multaPagada, 0);
   const multaGanada = punctuality.reduce((s, p) => s + p.multaGanada, 0);
-  const anticipos = advances.reduce((s, a) => s + a.monto, 0);
-  const totalARecibir = sueldoBase + pagoHoraExtra + multaGanada - multaPagada - anticipos;
+  const anticipos = advances.filter((a) => a.tipo === 'ANTICIPO').reduce((s, a) => s + a.monto, 0);
+  const multaManual = advances.filter((a) => a.tipo === 'MULTA').reduce((s, a) => s + a.monto, 0);
+  const totalARecibir =
+    sueldoBase + pagoHoraExtra + multaGanada - multaPagada - anticipos - multaManual;
 
   return {
     employeeId: emp.id,
@@ -177,6 +180,7 @@ export function calcularNominaEmpleado(
     multaPagada: round2(multaPagada),
     multaGanada: round2(multaGanada),
     anticipos: round2(anticipos),
+    multaManual: round2(multaManual),
     totalARecibir: round2(totalARecibir),
   };
 }

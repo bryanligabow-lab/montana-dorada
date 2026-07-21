@@ -133,6 +133,28 @@ export function useNomina(bizId: string, from: string, to: string) {
   });
 }
 
+/** Envía el informe completo del período al dueño (WhatsApp de reportes + correos). */
+export function useEnviarNominaDueno(bizId: string) {
+  return useMutation({
+    mutationFn: ({ from, to }: { from: string; to: string }) =>
+      api<{ whatsapp: number; email: number }>(
+        `/api/admin/businesses/${bizId}/nomina/enviar-dueno${qs({ from, to })}`,
+        { method: 'POST', auth: true },
+      ),
+  });
+}
+
+/** Envía a cada empleado su recibo de nómina en PDF por WhatsApp. */
+export function useEnviarNominaEmpleados(bizId: string) {
+  return useMutation({
+    mutationFn: ({ from, to }: { from: string; to: string }) =>
+      api<{ enviados: number; sinTelefono: number; total: number }>(
+        `/api/admin/businesses/${bizId}/nomina/enviar-empleados${qs({ from, to })}`,
+        { method: 'POST', auth: true },
+      ),
+  });
+}
+
 export function useAudit(bizId: string) {
   return useQuery({
     queryKey: ['audit', bizId],

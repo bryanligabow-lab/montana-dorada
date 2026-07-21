@@ -63,6 +63,7 @@ export function Config() {
       accent: current.branding.accent,
       bg: current.branding.bg,
       card: current.branding.card,
+      logoUrl: current.branding.logoUrl ?? '',
       reportEmails: current.reportEmails.join(', '),
       reportWhatsapp: current.reportWhatsapp.join(', '),
       whatsappGrupoId: current.whatsappGrupoId,
@@ -98,7 +99,7 @@ export function Config() {
       controlAlmuerzo: f.controlAlmuerzo,
       controlMultas: f.controlMultas,
       controlMedallas: f.controlMedallas,
-      branding: { primary: f.primary, accent: f.accent, bg: f.bg, card: f.card },
+      branding: { primary: f.primary, accent: f.accent, bg: f.bg, card: f.card, logoUrl: f.logoUrl.trim() },
       reportEmails: f.reportEmails
         .split(',')
         .map((s) => s.trim())
@@ -228,7 +229,16 @@ export function Config() {
       </Card>
 
       <Card className="space-y-3">
-        <SectionTitle>Marca (colores)</SectionTitle>
+        <SectionTitle>Marca (logo y colores)</SectionTitle>
+        <Field label="Logo (URL de imagen — se muestra en el panel, portal y marcación)">
+          <input className={input} value={f.logoUrl} onChange={(e) => set('logoUrl', e.target.value)} placeholder="https://.../logo.png" />
+        </Field>
+        {f.logoUrl && (
+          <div className="flex items-center gap-3">
+            <img src={f.logoUrl} alt="logo" className="h-14 w-14 object-contain rounded-lg bg-white/5 p-1" />
+            <span className="text-xs text-muted">Vista previa del logo</span>
+          </div>
+        )}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {(['primary', 'accent', 'bg', 'card'] as const).map((k) => (
             <Field key={k} label={k}>

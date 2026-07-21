@@ -95,6 +95,8 @@ export const employees = pgTable(
     estado: text('estado').$type<EmployeeStatus>().notNull().default('ACTIVO'),
     deudaInicial: doublePrecision('deuda_inicial').notNull().default(0),
     pin: text('pin'),
+    /** Número de WhatsApp del empleado (para enviarle su recibo de nómina en PDF). */
+    telefono: text('telefono'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => ({ uqCodigo: unique('uq_emp_codigo').on(t.businessId, t.codigo) }),
@@ -156,7 +158,7 @@ export const punctuality = pgTable(
   (t) => ({ uqDia: unique('uq_punt_dia').on(t.employeeId, t.fecha) }),
 );
 
-/** Anticipos de sueldo entregados a un empleado. Se descuentan del total de su nómina en el rango. */
+/** Descuentos manuales a un empleado (anticipos de sueldo o multas). Se restan del total de su nómina en el rango. */
 export const advances = pgTable('advances', {
   id: uuid('id').primaryKey().defaultRandom(),
   businessId: uuid('business_id')
@@ -165,11 +167,13 @@ export const advances = pgTable('advances', {
   employeeId: uuid('employee_id')
     .notNull()
     .references(() => employees.id, { onDelete: 'cascade' }),
-  /** Día del anticipo 'yyyy-MM-dd' (define en qué período de nómina se descuenta). */
+  /** 'ANTICIPO' (adelanto de sueldo) o 'MULTA' (sanción manual). Ambos restan del total. */
+  tipo: text('tipo').$type<'ANTICIPO' | 'MULTA'>().notNull().default('ANTICIPO'),
+  /** Día del descuento 'yyyy-MM-dd' (define en qué período de nómina se descuenta). */
   fecha: text('fecha').notNull(),
   monto: doublePrecision('monto').notNull().default(0),
   nota: text('nota'),
-  /** Usuario del panel que registró el anticipo. */
+  /** Usuario del panel que lo registró. */
   createdBy: uuid('created_by'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });

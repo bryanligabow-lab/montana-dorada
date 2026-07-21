@@ -69,7 +69,14 @@ export async function userRoutes(app: FastifyInstance): Promise<void> {
     const target = (await db.select().from(users).where(eq(users.id, id)).limit(1))[0];
     if (!target) return reply.code(404).send({ error: 'no_encontrado' });
 
-    await db.update(users).set(parsed.data).where(eq(users.id, id));
+    const patch = { ...parsed.data };
+    if (patch.email !== undefined) {
+      patch.email = patch.email.toLowerCase();
+      const otro = (await db.select().from(users).where(eq(users.email, patch.email)).limit(1))[0];
+      if (otro && otro.id !== id) return reply.code(409).send({ error: 'correo_existe' });
+    }
+
+    await db.update(users).set(patch).where(eq(users.id, id));
     await writeAudit(db, {
       businessId: null,
       userId: req.user.sub,

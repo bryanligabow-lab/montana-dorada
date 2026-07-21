@@ -49,6 +49,7 @@ export async function advanceRoutes(app: FastifyInstance): Promise<void> {
         .values({
           businessId: id,
           employeeId: parsed.data.employeeId,
+          tipo: parsed.data.tipo,
           fecha: parsed.data.fecha,
           monto: parsed.data.monto,
           nota: parsed.data.nota ?? null,
@@ -60,9 +61,9 @@ export async function advanceRoutes(app: FastifyInstance): Promise<void> {
         userId: req.user.sub,
         actorNombre: req.user.nombre,
         accion: 'create',
-        entidad: 'advance',
+        entidad: parsed.data.tipo === 'MULTA' ? 'multa_manual' : 'advance',
         entidadId: created!.id,
-        detalle: { empleado: emp.nombre, monto: parsed.data.monto, fecha: parsed.data.fecha },
+        detalle: { empleado: emp.nombre, tipo: parsed.data.tipo, monto: parsed.data.monto, fecha: parsed.data.fecha },
       });
       return toAdvance(created!);
     },

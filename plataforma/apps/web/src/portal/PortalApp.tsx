@@ -116,12 +116,17 @@ function PortalShell({ onLogout }: { onLogout: () => void }) {
   return (
     <div className="min-h-screen">
       <header className="border-b border-white/10 p-4 flex items-center justify-between flex-wrap gap-2">
-        <div>
-          <div className="font-black text-lg" style={{ color: 'var(--c-primary)' }}>
-            {me.data.business.nombre}
-          </div>
-          <div className="text-sm text-muted">
-            Hola, {me.data.employee.nombre} · {me.data.employee.codigo}
+        <div className="flex items-center gap-2">
+          {me.data.business.branding.logoUrl && (
+            <img src={me.data.business.branding.logoUrl} alt="" className="h-10 w-10 object-contain rounded" />
+          )}
+          <div>
+            <div className="font-black text-lg" style={{ color: 'var(--c-primary)' }}>
+              {me.data.business.nombre}
+            </div>
+            <div className="text-sm text-muted">
+              Hola, {me.data.employee.nombre} · {me.data.employee.codigo}
+            </div>
           </div>
         </div>
         <div className="flex items-center gap-2">

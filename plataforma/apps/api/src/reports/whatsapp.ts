@@ -21,3 +21,35 @@ export async function sendWhatsApp(text: string, numero?: string): Promise<boole
     return false;
   }
 }
+
+/**
+ * Envía un documento (p. ej. un PDF de nómina) por WhatsApp vía Evolution API.
+ * `contenido` es el archivo en base64 (sin prefijo data:). No-op si faltan credenciales o destino.
+ */
+export async function sendWhatsAppMedia(opts: {
+  numero: string;
+  base64: string;
+  fileName: string;
+  caption?: string;
+  mimetype?: string;
+}): Promise<boolean> {
+  const { url, key, instance } = env.evolution;
+  if (!url || !key || !instance || !opts.numero) return false;
+  try {
+    const res = await fetch(`${url.replace(/\/$/, '')}/message/sendMedia/${instance}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: key },
+      body: JSON.stringify({
+        number: opts.numero,
+        mediatype: 'document',
+        mimetype: opts.mimetype ?? 'application/pdf',
+        media: opts.base64,
+        fileName: opts.fileName,
+        caption: opts.caption,
+      }),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}

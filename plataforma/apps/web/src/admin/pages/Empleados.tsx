@@ -134,6 +134,7 @@ function EmployeeModal({
     horaExtraTipo: initial?.horaExtraTipo ?? 'PORCENTAJE',
     horaExtraValor: String(initial?.horaExtraValor ?? 0.5),
     pin: initial?.pin ?? '',
+    telefono: initial?.telefono ?? '',
   });
   const [err, setErr] = useState('');
   const input = 'field w-full px-3 py-2.5 text-sm';
@@ -152,6 +153,7 @@ function EmployeeModal({
       horaExtraTipo: f.horaExtraTipo,
       horaExtraValor: Number(f.horaExtraValor),
       pin: f.pin || undefined,
+      telefono: f.telefono.trim() || undefined,
     };
     try {
       if (initial) await update.mutateAsync({ id: initial.id, data: base });
@@ -173,6 +175,10 @@ function EmployeeModal({
         <div>
           <span className="block text-xs text-muted mb-1">Nombre</span>
           <input className={input} value={f.nombre} onChange={(e) => setF({ ...f, nombre: e.target.value })} required />
+        </div>
+        <div>
+          <span className="block text-xs text-muted mb-1">WhatsApp (para enviarle su recibo de nómina)</span>
+          <input className={input} value={f.telefono} onChange={(e) => setF({ ...f, telefono: e.target.value })} placeholder="0991234567" inputMode="tel" />
         </div>
         <div>
           <span className="block text-xs text-muted mb-1">Tipo de sueldo</span>

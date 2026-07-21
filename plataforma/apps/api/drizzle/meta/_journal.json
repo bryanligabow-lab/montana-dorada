@@ -57,6 +57,13 @@
       "when": 1784650673994,
       "tag": "0007_breezy_wind_dancer",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1784652674062,
+      "tag": "0008_slippery_piledriver",
+      "breakpoints": true
     }
   ]
 }
