@@ -59,10 +59,10 @@ export function Config() {
       controlAlmuerzo: current.controlAlmuerzo,
       controlMultas: current.controlMultas,
       controlMedallas: current.controlMedallas,
-      primary: current.branding.primary,
-      accent: current.branding.accent,
-      bg: current.branding.bg,
-      card: current.branding.card,
+      primary: current.branding.primary || '#43A047',
+      accent: current.branding.accent || '#E53935',
+      bg: current.branding.bg || '#0A1A0F',
+      card: current.branding.card || '#0F2417',
       logoUrl: current.branding.logoUrl ?? '',
       reportEmails: current.reportEmails.join(', '),
       reportWhatsapp: current.reportWhatsapp.join(', '),
@@ -99,7 +99,15 @@ export function Config() {
       controlAlmuerzo: f.controlAlmuerzo,
       controlMultas: f.controlMultas,
       controlMedallas: f.controlMedallas,
-      branding: { primary: f.primary, accent: f.accent, bg: f.bg, card: f.card, logoUrl: f.logoUrl.trim() },
+      // Nunca guardar un color vacío: si lo está, se usa el valor por defecto (evita que el sistema
+      // caiga al color base y parezca que "no se cambia").
+      branding: {
+        primary: f.primary || '#43A047',
+        accent: f.accent || '#E53935',
+        bg: f.bg || '#0A1A0F',
+        card: f.card || '#0F2417',
+        logoUrl: f.logoUrl.trim(),
+      },
       reportEmails: f.reportEmails
         .split(',')
         .map((s) => s.trim())
