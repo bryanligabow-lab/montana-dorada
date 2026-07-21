@@ -1,5 +1,5 @@
-import type { Attendance, AuditLog, Business, Employee, Punctuality } from '@asis/shared';
-import type { attendance, auditLog, businesses, employees, punctuality } from '../db/schema';
+import type { Advance, Attendance, AuditLog, Business, Employee, Punctuality } from '@asis/shared';
+import type { advances, attendance, auditLog, businesses, employees, punctuality } from '../db/schema';
 
 export function toBusiness(b: typeof businesses.$inferSelect): Business {
   return { ...b, createdAt: b.createdAt.toISOString() };
@@ -25,4 +25,8 @@ export function toPunctuality(p: typeof punctuality.$inferSelect): Punctuality {
 
 export function toAuditLog(l: typeof auditLog.$inferSelect): AuditLog {
   return { ...l, createdAt: l.createdAt.toISOString() };
+}
+
+export function toAdvance(a: typeof advances.$inferSelect): Advance {
+  return { ...a, createdAt: a.createdAt.toISOString() };
 }

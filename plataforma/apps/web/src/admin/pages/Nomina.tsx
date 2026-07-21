@@ -96,7 +96,7 @@ export function Nomina() {
           <Spinner />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm min-w-[960px]">
+            <table className="w-full text-sm min-w-[1060px]">
               <thead>
                 <tr className="text-muted text-left text-xs uppercase tracking-wide">
                   <th className="p-2">Empleado</th>
@@ -107,6 +107,7 @@ export function Nomina() {
                   <th className="p-2 text-right">Hora extra ($)</th>
                   <th className="p-2 text-right">Multa pagó</th>
                   <th className="p-2 text-right">Multa ganó</th>
+                  <th className="p-2 text-right">Anticipos</th>
                   <th className="p-2 text-right">Total a recibir</th>
                 </tr>
               </thead>
@@ -132,12 +133,15 @@ export function Nomina() {
                     <td className="p-2 text-right" style={{ color: r.multaGanada > 0 ? 'var(--c-primary)' : undefined }}>
                       {r.multaGanada > 0 ? `+${money(r.multaGanada)}` : money(0)}
                     </td>
+                    <td className="p-2 text-right" style={{ color: r.anticipos > 0 ? 'var(--c-accent)' : undefined }}>
+                      {r.anticipos > 0 ? `-${money(r.anticipos)}` : money(0)}
+                    </td>
                     <td className="p-2 text-right font-black">{money(r.totalARecibir)}</td>
                   </tr>
                 ))}
                 {rows.length === 0 && (
                   <tr>
-                    <td colSpan={9} className="p-6 text-center text-muted">
+                    <td colSpan={10} className="p-6 text-center text-muted">
                       Sin datos en el período.
                     </td>
                   </tr>
@@ -146,7 +150,7 @@ export function Nomina() {
               {rows.length > 0 && (
                 <tfoot>
                   <tr className="border-t-2 border-white/10">
-                    <td colSpan={8} className="p-2 text-right font-bold text-muted">
+                    <td colSpan={9} className="p-2 text-right font-bold text-muted">
                       Total nómina del período
                     </td>
                     <td className="p-2 text-right font-black" style={{ color: 'var(--c-primary)' }}>

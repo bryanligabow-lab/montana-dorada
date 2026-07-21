@@ -247,6 +247,8 @@ function QrModal({ emp, onClose }: { emp: Employee; onClose: () => void }) {
     QRCode.toDataURL(url, { width: 280, margin: 1 }).then(setDataUrl).catch(() => setDataUrl(''));
   }, [url]);
 
+  const portalUrl = `${window.location.origin}/portal`;
+
   return (
     <Overlay onClose={onClose}>
       <div className="text-center">
@@ -254,6 +256,16 @@ function QrModal({ emp, onClose }: { emp: Employee; onClose: () => void }) {
         <div className="text-xs text-muted mb-3">{emp.codigo}</div>
         {dataUrl && <img src={dataUrl} alt="QR" className="mx-auto rounded-xl bg-white p-2" width={240} height={240} />}
         <div className="text-xs text-muted break-all mt-3">{url}</div>
+
+        <div className="card mt-4 p-3 text-left" style={{ background: 'rgba(255,255,255,.03)' }}>
+          <div className="text-xs text-muted mb-1">Portal del empleado (consulta sueldo, asistencia, anticipos)</div>
+          <div className="text-sm font-mono break-all">🔗 {portalUrl}</div>
+          <div className="text-sm font-mono mt-1">👤 Código: {emp.codigo}</div>
+          <div className="text-sm font-mono mt-1">
+            🔑 PIN: <span className="font-black tracking-widest" style={{ color: 'var(--c-primary)' }}>{emp.pin ?? '—'}</span>
+          </div>
+        </div>
+
         <div className="flex gap-2 mt-4">
           <button className="btn-brand px-4 py-2 flex-1" onClick={() => window.print()}>
             Imprimir

@@ -33,6 +33,10 @@ interface PuntRow {
   multaGanada: number;
 }
 
+interface AdvanceRow {
+  monto: number;
+}
+
 const round2 = (n: number): number => Math.round(n * 100) / 100;
 
 function esFinDeSemana(fecha: string): boolean {
@@ -95,7 +99,7 @@ function minutosJornadaEsperada(biz: Biz, fecha: string): number {
  * - tipoSueldo='DIARIO': sueldo/sueldoFds × días trabajados.
  * - tipoSueldo='FIJO': sueldoFijo prorrateado según frecuenciaSueldo vs el largo del rango.
  * - Horas extra: exceso sobre la jornada esperada (horarios→horariosSalida) cada día trabajado.
- * - multaGanada suma, multaPagada resta.
+ * - multaGanada suma, multaPagada resta, anticipos restan.
  */
 export function calcularNominaEmpleado(
   emp: Emp,
@@ -104,6 +108,7 @@ export function calcularNominaEmpleado(
   punctuality: PuntRow[],
   from: string,
   to: string,
+  advances: AdvanceRow[] = [],
 ): NominaRow {
   let sueldoBase = 0;
   let diasTrabajados = 0;
@@ -156,7 +161,8 @@ export function calcularNominaEmpleado(
 
   const multaPagada = punctuality.reduce((s, p) => s + p.multaPagada, 0);
   const multaGanada = punctuality.reduce((s, p) => s + p.multaGanada, 0);
-  const totalARecibir = sueldoBase + pagoHoraExtra + multaGanada - multaPagada;
+  const anticipos = advances.reduce((s, a) => s + a.monto, 0);
+  const totalARecibir = sueldoBase + pagoHoraExtra + multaGanada - multaPagada - anticipos;
 
   return {
     employeeId: emp.id,
@@ -170,6 +176,7 @@ export function calcularNominaEmpleado(
     pagoHoraExtra: round2(pagoHoraExtra),
     multaPagada: round2(multaPagada),
     multaGanada: round2(multaGanada),
+    anticipos: round2(anticipos),
     totalARecibir: round2(totalARecibir),
   };
 }

@@ -6,6 +6,7 @@ import { employees } from '../db/schema';
 import { toEmployee } from '../lib/dto';
 import { canAccess } from '../lib/http';
 import { generateQrToken } from '../lib/qr';
+import { generate4DigitPin } from '../lib/pin';
 import { writeAudit } from '../lib/audit';
 
 export async function employeeRoutes(app: FastifyInstance): Promise<void> {
@@ -47,7 +48,8 @@ export async function employeeRoutes(app: FastifyInstance): Promise<void> {
           horaExtraValor: parsed.data.horaExtraValor,
           estado: parsed.data.estado,
           deudaInicial: parsed.data.deudaInicial,
-          pin: parsed.data.pin ?? null,
+          // PIN de 4 dígitos para el portal del empleado: se autogenera si no se indicó uno.
+          pin: parsed.data.pin || generate4DigitPin(),
         })
         .returning();
       await writeAudit(db, {

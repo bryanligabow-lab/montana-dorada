@@ -156,6 +156,24 @@ export const punctuality = pgTable(
   (t) => ({ uqDia: unique('uq_punt_dia').on(t.employeeId, t.fecha) }),
 );
 
+/** Anticipos de sueldo entregados a un empleado. Se descuentan del total de su nómina en el rango. */
+export const advances = pgTable('advances', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  businessId: uuid('business_id')
+    .notNull()
+    .references(() => businesses.id, { onDelete: 'cascade' }),
+  employeeId: uuid('employee_id')
+    .notNull()
+    .references(() => employees.id, { onDelete: 'cascade' }),
+  /** Día del anticipo 'yyyy-MM-dd' (define en qué período de nómina se descuenta). */
+  fecha: text('fecha').notNull(),
+  monto: doublePrecision('monto').notNull().default(0),
+  nota: text('nota'),
+  /** Usuario del panel que registró el anticipo. */
+  createdBy: uuid('created_by'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const users = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom(),
   email: text('email').notNull().unique(),

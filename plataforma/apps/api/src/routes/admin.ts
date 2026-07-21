@@ -3,7 +3,7 @@ import { and, desc, eq, gte, lte } from 'drizzle-orm';
 import { attendanceUpdateSchema, nominaQuerySchema } from '@asis/shared';
 import type { PunctualitySummary } from '@asis/shared';
 import { getDb } from '../db';
-import { attendance, auditLog, businesses, employees, punctuality } from '../db/schema';
+import { advances, attendance, auditLog, businesses, employees, punctuality } from '../db/schema';
 import { toAttendance, toAuditLog } from '../lib/dto';
 import { canAccess, parseDateRange } from '../lib/http';
 import { writeAudit } from '../lib/audit';
@@ -170,14 +170,28 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
         .select()
         .from(punctuality)
         .where(and(eq(punctuality.businessId, id), gte(punctuality.fecha, from), lte(punctuality.fecha, to)));
+      const advRows = await db
+        .select()
+        .from(advances)
+        .where(and(eq(advances.businessId, id), gte(advances.fecha, from), lte(advances.fecha, to)));
 
       const attByEmp = new Map<string, typeof attRows>();
       for (const a of attRows) attByEmp.set(a.employeeId, [...(attByEmp.get(a.employeeId) ?? []), a]);
       const puntByEmp = new Map<string, typeof puntRows>();
       for (const p of puntRows) puntByEmp.set(p.employeeId, [...(puntByEmp.get(p.employeeId) ?? []), p]);
+      const advByEmp = new Map<string, typeof advRows>();
+      for (const a of advRows) advByEmp.set(a.employeeId, [...(advByEmp.get(a.employeeId) ?? []), a]);
 
       return emps.map((e) =>
-        calcularNominaEmpleado(e, biz, attByEmp.get(e.id) ?? [], puntByEmp.get(e.id) ?? [], from, to),
+        calcularNominaEmpleado(
+          e,
+          biz,
+          attByEmp.get(e.id) ?? [],
+          puntByEmp.get(e.id) ?? [],
+          from,
+          to,
+          advByEmp.get(e.id) ?? [],
+        ),
       );
     },
   );

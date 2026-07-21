@@ -197,6 +197,31 @@ export const nominaQuerySchema = z.object({
 });
 export type NominaQuery = z.infer<typeof nominaQuerySchema>;
 
+// ─── Anticipos ───────────────────────────────────────────────────────────────
+
+export const advanceCreateSchema = z.object({
+  employeeId: z.string().uuid(),
+  fecha: z.string().regex(dateRegex),
+  monto: z.number().positive('El monto debe ser mayor a 0'),
+  nota: z.string().max(200).optional(),
+});
+export type AdvanceCreateInput = z.infer<typeof advanceCreateSchema>;
+
+// ─── Portal del empleado (solo lectura, entra con código + PIN) ───────────────
+
+export const portalLoginSchema = z.object({
+  codigo: z.string().min(1).max(20),
+  pin: z.string().regex(/^\d{4}$/, 'El PIN son 4 dígitos'),
+});
+export type PortalLoginInput = z.infer<typeof portalLoginSchema>;
+
+/** Datos del empleado y su negocio que el portal usa para pintarse tras el login. */
+export interface PortalSession {
+  token: string;
+  employee: { id: string; codigo: string; nombre: string };
+  business: { nombre: string; branding: BusinessBranding };
+}
+
 // ─── Usuarios / accesos (solo OWNER) ─────────────────────────────────────────
 
 export const userCreateSchema = z.object({

@@ -152,6 +152,18 @@ export interface Punctuality {
   createdAt: string;
 }
 
+/** Anticipo de sueldo entregado a un empleado; se descuenta de su nómina. */
+export interface Advance {
+  id: string;
+  businessId: string;
+  employeeId: string;
+  fecha: string;
+  monto: number;
+  nota: string | null;
+  createdBy: string | null;
+  createdAt: string;
+}
+
 export interface User {
   id: string;
   email: string;
@@ -196,7 +208,9 @@ export interface NominaRow {
   pagoHoraExtra: number;
   multaPagada: number;
   multaGanada: number;
-  /** sueldoBase + pagoHoraExtra + multaGanada - multaPagada. */
+  /** Anticipos entregados en el rango (se restan del total). */
+  anticipos: number;
+  /** sueldoBase + pagoHoraExtra + multaGanada - multaPagada - anticipos. */
   totalARecibir: number;
 }
 

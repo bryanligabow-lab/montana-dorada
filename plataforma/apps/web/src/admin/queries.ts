@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
+  Advance,
+  AdvanceCreateInput,
   Attendance,
   AttendanceUpdateInput,
   AuditLog,
@@ -18,6 +20,7 @@ import type {
 import { api } from '../lib/api';
 
 export type AttendanceRow = Attendance & { empNombre: string; empCodigo: string };
+export type AdvanceRow = Advance & { empNombre: string; empCodigo: string };
 
 function qs(params: Record<string, string | undefined>): string {
   const p = new URLSearchParams();
@@ -134,6 +137,38 @@ export function useAudit(bizId: string) {
   return useQuery({
     queryKey: ['audit', bizId],
     queryFn: () => api<AuditLog[]>(`/api/admin/businesses/${bizId}/audit`, { auth: true }),
+  });
+}
+
+// ── Anticipos ────────────────────────────────────────────────────────────────
+export function useAdvances(bizId: string, params: Record<string, string | undefined>) {
+  return useQuery({
+    queryKey: ['advances', bizId, params],
+    queryFn: () =>
+      api<AdvanceRow[]>(`/api/admin/businesses/${bizId}/advances${qs(params)}`, { auth: true }),
+  });
+}
+
+export function useCreateAdvance(bizId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: AdvanceCreateInput) =>
+      api<Advance>(`/api/admin/businesses/${bizId}/advances`, { method: 'POST', body: data, auth: true }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['advances', bizId] });
+      qc.invalidateQueries({ queryKey: ['nomina', bizId] });
+    },
+  });
+}
+
+export function useDeleteAdvance(bizId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api(`/api/admin/advances/${id}`, { method: 'DELETE', auth: true }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['advances', bizId] });
+      qc.invalidateQueries({ queryKey: ['nomina', bizId] });
+    },
   });
 }
 

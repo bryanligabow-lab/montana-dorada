@@ -14,6 +14,11 @@ export interface JwtPayload {
   rol: Role;
   nombre: string;
   businessIds: string[];
+  /** 'portal' en los tokens del portal del empleado (solo lectura). Ausente en tokens de admin/dueño. */
+  kind?: 'portal';
+  /** employeeId y businessId del empleado, solo cuando kind==='portal'. */
+  employeeId?: string;
+  businessId?: string;
 }
 
 /** Negocios a los que el usuario puede acceder (OWNER ve todos). */

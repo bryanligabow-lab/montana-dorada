@@ -1,8 +1,9 @@
-import { eq } from 'drizzle-orm';
+import { eq, isNull, or } from 'drizzle-orm';
 import { getDb } from './db';
 import { businesses, employees, users } from './db/schema';
 import { hashPassword } from './lib/auth';
 import { generateQrToken } from './lib/qr';
+import { generate4DigitPin } from './lib/pin';
 import type { BusinessBranding, WeekSchedule } from '@asis/shared';
 
 interface SeedBiz {
@@ -118,6 +119,16 @@ export async function runSeed(): Promise<void> {
       console.log(`  · ${s.ejemploCodigo} (${s.ejemploNombre}) — QR token: ${emp.qrToken}`);
     }
   }
+
+  // Backfill: cualquier empleado sin PIN recibe uno de 4 dígitos (para el portal del empleado).
+  const sinPin = await db
+    .select({ id: employees.id })
+    .from(employees)
+    .where(or(isNull(employees.pin), eq(employees.pin, '')));
+  for (const e of sinPin) {
+    await db.update(employees).set({ pin: generate4DigitPin() }).where(eq(employees.id, e.id));
+  }
+  if (sinPin.length) console.log(`✓ PIN asignado a ${sinPin.length} empleado(s) sin PIN`);
 
   const owner = (await db.select().from(users).where(eq(users.email, ownerEmail)).limit(1))[0];
   if (!owner) {

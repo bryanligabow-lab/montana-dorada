@@ -10,6 +10,7 @@ import { Ranking } from './pages/Ranking';
 import { Asistencia } from './pages/Asistencia';
 import { Empleados } from './pages/Empleados';
 import { Nomina } from './pages/Nomina';
+import { Anticipos } from './pages/Anticipos';
 import { Auditoria } from './pages/Auditoria';
 import { Config } from './pages/Config';
 
@@ -73,6 +74,7 @@ const NAV = [
   { to: 'asistencia', label: 'Asistencia', end: false },
   { to: 'empleados', label: 'Empleados', end: false },
   { to: 'nomina', label: 'Nómina', end: false },
+  { to: 'anticipos', label: 'Anticipos', end: false },
   { to: 'auditoria', label: 'Auditoría', end: false },
   { to: 'config', label: 'Configuración', end: false },
 ];
@@ -114,6 +116,7 @@ function Layout() {
           <Route path="asistencia" element={<Asistencia />} />
           <Route path="empleados" element={<Empleados />} />
           <Route path="nomina" element={<Nomina />} />
+          <Route path="anticipos" element={<Anticipos />} />
           <Route path="auditoria" element={<Auditoria />} />
           <Route path="config" element={<Config />} />
           <Route path="*" element={<Navigate to="" replace />} />

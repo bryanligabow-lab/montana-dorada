@@ -135,3 +135,21 @@ describe('calcularNominaEmpleado — multas', () => {
     expect(r.totalARecibir).toBe(18); // 20 + 3 - 5
   });
 });
+
+describe('calcularNominaEmpleado — anticipos', () => {
+  it('los anticipos del rango se restan del total a recibir', () => {
+    const att = [attDia('2026-07-06', '08:00', '17:00'), attDia('2026-07-07', '08:00', '17:00')];
+    const adv = [{ monto: 15 }, { monto: 10 }];
+    const r = calcularNominaEmpleado(emp(), BIZ, att, [], '2026-07-06', '2026-07-07', adv);
+    expect(r.sueldoBase).toBe(40); // 20 + 20
+    expect(r.anticipos).toBe(25); // 15 + 10
+    expect(r.totalARecibir).toBe(15); // 40 - 25
+  });
+
+  it('sin anticipos, anticipos=0 y el total no cambia', () => {
+    const att = [attDia('2026-07-06', '08:00', '17:00')];
+    const r = calcularNominaEmpleado(emp(), BIZ, att, [], '2026-07-06', '2026-07-06');
+    expect(r.anticipos).toBe(0);
+    expect(r.totalARecibir).toBe(20);
+  });
+});
