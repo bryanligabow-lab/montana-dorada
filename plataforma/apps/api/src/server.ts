@@ -11,6 +11,7 @@ import { importRoutes } from './routes/import';
 import { userRoutes } from './routes/users';
 import { advanceRoutes } from './routes/advances';
 import { portalRoutes } from './routes/portal';
+import { nominaReportRoutes } from './routes/nomina-reports';
 
 export async function buildServer() {
   const app = Fastify({ logger: { level: env.isProd ? 'info' : 'warn' }, bodyLimit: 15 * 1024 * 1024 });
@@ -48,6 +49,7 @@ export async function buildServer() {
   await app.register(adminRoutes);
   await app.register(advanceRoutes);
   await app.register(portalRoutes);
+  await app.register(nominaReportRoutes);
   await app.register(importRoutes);
   await app.register(userRoutes);
 
