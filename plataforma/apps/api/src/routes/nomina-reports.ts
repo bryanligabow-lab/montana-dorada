@@ -1,14 +1,18 @@
 import type { FastifyInstance } from 'fastify';
+import { eq } from 'drizzle-orm';
 import { nominaQuerySchema } from '@asis/shared';
 import { getDb } from '../db';
+import { businesses } from '../db/schema';
 import { canAccess } from '../lib/http';
 import { writeAudit } from '../lib/audit';
 import { calcularNominaNegocio } from '../services/nomina';
 import { pdfNominaNegocio, pdfReciboEmpleado } from '../reports/nomina-pdf';
 import { sendWhatsAppMedia } from '../reports/whatsapp';
 import { sendMail } from '../reports/mailer';
+import { runReporte, type ReporteTipo } from '../reports/report';
 
 const b64 = (bytes: Uint8Array) => Buffer.from(bytes).toString('base64');
+const TIPOS: ReporteTipo[] = ['DIARIO', 'SEMANAL', 'MENSUAL'];
 
 export async function nominaReportRoutes(app: FastifyInstance): Promise<void> {
   // Enviar el informe completo del período al dueño (WhatsApp de reportes + correos configurados).
@@ -116,6 +120,42 @@ export async function nominaReportRoutes(app: FastifyInstance): Promise<void> {
         detalle: { from, to, enviados, sinTelefono },
       });
       return { enviados, sinTelefono, total: activos.length };
+    },
+  );
+
+  // Enviar un REPORTE DE PRUEBA (diario/semanal/mensual) a los correos+WhatsApp de reportes del negocio,
+  // marcado claramente como prueba. Sirve para verificar sin esperar al envío automático de las 6am.
+  app.post(
+    '/api/admin/businesses/:id/reporte-prueba',
+    { preHandler: [app.authenticate] },
+    async (req, reply) => {
+      const { id } = req.params as { id: string };
+      if (!(await canAccess(req, id))) return reply.code(403).send({ error: 'sin_acceso' });
+      const q = req.query as Record<string, string>;
+      const tipo = TIPOS.includes(q.tipo as ReporteTipo) ? (q.tipo as ReporteTipo) : 'DIARIO';
+
+      const db = await getDb();
+      const biz = (await db.select().from(businesses).where(eq(businesses.id, id)).limit(1))[0];
+      if (!biz) return reply.code(404).send({ error: 'no_encontrado' });
+      if (!biz.reportEmails.length && !biz.reportWhatsapp.length) {
+        return reply.code(400).send({ error: 'sin_destinos' });
+      }
+
+      // Rango opcional (from/to) para poder mostrar datos reales aunque el período natural esté vacío.
+      const enviado = await runReporte(db, biz, tipo, { esPrueba: true, from: q.from, to: q.to });
+      await writeAudit(db, {
+        businessId: id,
+        userId: req.user.sub,
+        actorNombre: req.user.nombre,
+        accion: 'reporte_prueba',
+        entidad: 'reporte',
+        detalle: { tipo, from: q.from, to: q.to },
+      });
+      return {
+        enviado,
+        correos: biz.reportEmails,
+        whatsapp: biz.reportWhatsapp,
+      };
     },
   );
 }

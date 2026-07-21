@@ -93,7 +93,7 @@ const TIPO_LABEL: Record<ReporteTipo, string> = {
 };
 
 /** Correo profesional (tema claro, compatible con Gmail/Outlook: tablas + estilos en línea). */
-export function buildHtml(b: Biz, tipo: ReporteTipo, label: string, rows: PunctualitySummary[]): string {
+export function buildHtml(b: Biz, tipo: ReporteTipo, label: string, rows: PunctualitySummary[], esPrueba = false): string {
   const primary = b.branding.primary || '#43A047';
   const logo = b.branding.logoUrl
     ? `<img src="${esc(b.branding.logoUrl)}" alt="" height="40" style="height:40px;display:block;margin-bottom:8px" />`
@@ -128,9 +128,15 @@ export function buildHtml(b: Biz, tipo: ReporteTipo, label: string, rows: Punctu
     ? rows.map(fila).join('')
     : `<tr><td colspan="8" style="padding:24px;text-align:center;color:#9ca3af">Sin marcaciones en el período.</td></tr>`;
 
+  const bannerPrueba = esPrueba
+    ? `<table width="100%" cellpadding="0" cellspacing="0" role="presentation"><tr><td style="background:#FEF3C7;color:#92400E;padding:12px 20px;text-align:center;font-size:13px;font-weight:700;border-bottom:1px solid #FDE68A">🧪 CORREO DE PRUEBA — ignóralo. Es solo para verificar que los reportes llegan bien.</td></tr></table>`
+    : '';
+
   return `<div style="background:#eceef1;padding:24px 12px;font-family:Arial,Helvetica,sans-serif;-webkit-text-size-adjust:100%">
     <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="max-width:660px;margin:0 auto">
       <tr><td style="background:#ffffff;border-radius:16px;overflow:hidden">
+
+        ${bannerPrueba}
 
         <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
           <tr><td style="background:${primary};padding:24px 28px">
@@ -193,15 +199,26 @@ function buildText(b: Biz, tipo: ReporteTipo, label: string, rows: PunctualitySu
   return `📊 REPORTE ${tipo} · ${b.nombre}\n${label}\n\n${filas || '(sin marcaciones)'}${resto}`;
 }
 
-export async function runReporte(db: DB, b: Biz, tipo: ReporteTipo): Promise<boolean> {
-  const { from, to, label } = rangoReporte(tipo, b);
+export async function runReporte(
+  db: DB,
+  b: Biz,
+  tipo: ReporteTipo,
+  opts: { esPrueba?: boolean; from?: string; to?: string } = {},
+): Promise<boolean> {
+  const rango =
+    opts.from && opts.to
+      ? { from: opts.from, to: opts.to, label: `${fechaDisplay(opts.from)} – ${fechaDisplay(opts.to)}` }
+      : rangoReporte(tipo, b);
+  const { from, to, label } = rango;
   const rows = await resumen(db, b.id, from, to);
   const to_ = b.reportEmails.length ? b.reportEmails : env.reportEmails;
-  const html = buildHtml(b, tipo, label, rows);
+  const html = buildHtml(b, tipo, label, rows, opts.esPrueba);
+  const prefijo = opts.esPrueba ? '🧪 PRUEBA · ' : '';
+  const textPrueba = opts.esPrueba ? '🧪 *MENSAJE DE PRUEBA — ignóralo*\n\n' : '';
 
   const resultados = await Promise.allSettled([
-    sendMail({ to: to_, subject: `${TIPO_LABEL[tipo]} · ${b.nombre} · ${label}`, html }),
-    ...b.reportWhatsapp.map((numero) => sendWhatsApp(buildText(b, tipo, label, rows), numero)),
+    sendMail({ to: to_, subject: `${prefijo}${TIPO_LABEL[tipo]} · ${b.nombre} · ${label}`, html }),
+    ...b.reportWhatsapp.map((numero) => sendWhatsApp(textPrueba + buildText(b, tipo, label, rows), numero)),
   ]);
   return resultados.some((r) => r.status === 'fulfilled' && r.value === true);
 }
