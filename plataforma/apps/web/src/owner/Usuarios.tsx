@@ -162,8 +162,8 @@ function CrearUsuario({ onClose }: { onClose: () => void }) {
           <input className={input} value={f.nombre} onChange={(e) => setF({ ...f, nombre: e.target.value })} required />
         </label>
         <label className="block">
-          <span className="block text-xs text-muted mb-1">Correo</span>
-          <input className={input} type="email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} required />
+          <span className="block text-xs text-muted mb-1">Usuario o correo de acceso</span>
+          <input className={input} type="text" autoCapitalize="none" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} required placeholder="p. ej. restfull" />
         </label>
         <label className="block">
           <span className="block text-xs text-muted mb-1">Contraseña inicial</span>

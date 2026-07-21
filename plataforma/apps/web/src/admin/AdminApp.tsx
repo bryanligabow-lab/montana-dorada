@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, NavLink, Navigate, Route, Routes, useSearchParams } from 'react-router-dom';
+import { Link, NavLink, Navigate, Route, Routes, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import type { Business, User } from '@asis/shared';
 import { api, getToken, setToken } from '../lib/api';
@@ -34,8 +34,10 @@ function Shell({ onLogout }: { onLogout: () => void }) {
     queryFn: () => api<{ user: User; businesses: Business[] }>('/api/auth/me', { auth: true }),
   });
   const [params] = useSearchParams();
+  const navigate = useNavigate();
   const [currentId, setCurrentIdState] = useState<string | null>(null);
 
+  const user = me.data?.user;
   const businesses = me.data?.businesses ?? [];
   const current = businesses.find((b) => b.id === currentId) ?? businesses[0];
 
@@ -47,14 +49,25 @@ function Shell({ onLogout }: { onLogout: () => void }) {
 
   useEffect(() => {
     if (!businesses.length || currentId) return;
-    // Prioridad: ?biz= de la URL (entrar desde el panel de dueño) > último negocio recordado > primero.
+    // Prioridad: ?biz= de la URL (entrar desde el panel de dueño) > último negocio recordado.
     // El `find` valida contra los negocios accesibles: un id que ya no corresponde se descarta solo.
     const wanted = params.get('biz');
     const bySlug = wanted ? businesses.find((b) => b.slug === wanted) : undefined;
     const stored = localStorage.getItem('asis_current_biz');
     const byStored = stored ? businesses.find((b) => b.id === stored) : undefined;
-    setCurrentId((bySlug ?? byStored ?? businesses[0])!.id);
-  }, [businesses, currentId, params]);
+    const resolved = bySlug ?? byStored;
+    if (resolved) {
+      setCurrentId(resolved.id);
+      return;
+    }
+    // Sin negocio elegido: el DUEÑO va a su panel maestro (lista de negocios), no a uno al azar.
+    // Un cliente (ADMIN) solo tiene su(s) negocio(s), así que entra directo al suyo.
+    if (user?.rol === 'OWNER') {
+      navigate('/owner', { replace: true });
+      return;
+    }
+    setCurrentId(businesses[0]!.id);
+  }, [businesses, currentId, params, user, navigate]);
 
   useEffect(() => {
     if (current) applyBranding(current.branding);

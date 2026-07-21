@@ -229,7 +229,8 @@ export interface PortalSession {
 // ─── Usuarios / accesos (solo OWNER) ─────────────────────────────────────────
 
 export const userCreateSchema = z.object({
-  email: z.string().email(),
+  // Usuario de acceso: correo o nombre simple (p. ej. "restfull"). Se guarda en minúsculas.
+  email: z.string().min(1).max(120),
   nombre: z.string().min(1).max(80),
   password: z.string().min(6).max(72),
   businessIds: z.array(z.string().uuid()).min(1, 'Elige al menos un negocio'),
