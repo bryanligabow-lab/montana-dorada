@@ -20,6 +20,7 @@ export function AdminApp() {
   return (
     <Shell
       onLogout={() => {
+        localStorage.removeItem('asis_current_biz');
         setToken(null);
         setTok(null);
       }}
@@ -33,16 +34,26 @@ function Shell({ onLogout }: { onLogout: () => void }) {
     queryFn: () => api<{ user: User; businesses: Business[] }>('/api/auth/me', { auth: true }),
   });
   const [params] = useSearchParams();
-  const [currentId, setCurrentId] = useState<string | null>(null);
+  const [currentId, setCurrentIdState] = useState<string | null>(null);
 
   const businesses = me.data?.businesses ?? [];
   const current = businesses.find((b) => b.id === currentId) ?? businesses[0];
 
+  // Recuerda el negocio elegido para que al recargar NO caiga en el primero de la lista.
+  const setCurrentId = (id: string) => {
+    setCurrentIdState(id);
+    localStorage.setItem('asis_current_biz', id);
+  };
+
   useEffect(() => {
     if (!businesses.length || currentId) return;
+    // Prioridad: ?biz= de la URL (entrar desde el panel de dueño) > último negocio recordado > primero.
+    // El `find` valida contra los negocios accesibles: un id que ya no corresponde se descarta solo.
     const wanted = params.get('biz');
-    const match = wanted ? businesses.find((b) => b.slug === wanted) : undefined;
-    setCurrentId((match ?? businesses[0])!.id);
+    const bySlug = wanted ? businesses.find((b) => b.slug === wanted) : undefined;
+    const stored = localStorage.getItem('asis_current_biz');
+    const byStored = stored ? businesses.find((b) => b.id === stored) : undefined;
+    setCurrentId((bySlug ?? byStored ?? businesses[0])!.id);
   }, [businesses, currentId, params]);
 
   useEffect(() => {
