@@ -67,6 +67,8 @@ export function Config() {
       reportEmails: current.reportEmails.join(', '),
       reportWhatsapp: current.reportWhatsapp.join(', '),
       whatsappGrupoId: current.whatsappGrupoId,
+      recordatorioSalidaActivo: current.recordatorioSalidaActivo,
+      recordatorioSalidaMin: String(current.recordatorioSalidaMin),
     };
   }
   // Resetear el formulario al cambiar de negocio.
@@ -117,6 +119,8 @@ export function Config() {
         .map((s) => s.trim())
         .filter(Boolean),
       whatsappGrupoId: f.whatsappGrupoId.trim(),
+      recordatorioSalidaActivo: f.recordatorioSalidaActivo,
+      recordatorioSalidaMin: Math.max(1, Math.min(240, Number(f.recordatorioSalidaMin) || 30)),
     };
     try {
       await upd.mutateAsync(data);
@@ -185,6 +189,36 @@ export function Config() {
             </Field>
           ))}
         </div>
+      </Card>
+
+      <Card className="space-y-3">
+        <SectionTitle>Recordatorio de salida</SectionTitle>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={f.recordatorioSalidaActivo}
+            onChange={(e) => set('recordatorioSalidaActivo', e.target.checked)}
+          />
+          Enviar por <b>WhatsApp</b> un recordatorio a cada empleado antes de su hora de salida
+        </label>
+        {f.recordatorioSalidaActivo && (
+          <div className="pl-6 space-y-2">
+            <Field label="¿Cuántos minutos antes de la salida?">
+              <input
+                className={`${input} max-w-[160px]`}
+                type="number"
+                min={1}
+                max={240}
+                value={f.recordatorioSalidaMin}
+                onChange={(e) => set('recordatorioSalidaMin', e.target.value)}
+              />
+            </Field>
+            <p className="text-xs text-muted">
+              Se envía al teléfono de cada empleado que ya marcó entrada y aún no marca salida. La hora de salida
+              es la de la sección <b>Horario de salida</b>. Requiere que el empleado tenga teléfono registrado.
+            </p>
+          </div>
+        )}
       </Card>
 
       <Card className="space-y-2">

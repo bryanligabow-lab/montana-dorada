@@ -52,3 +52,31 @@ export async function notifyMarcacion(opts: {
     opts.whatsappGrupoId ? sendWhatsApp(text, opts.whatsappGrupoId) : Promise.resolve(false),
   ]);
 }
+
+/** Avisa al negocio que un empleado registró (tarde) la salida de un día olvidado, pendiente de aprobación. */
+export async function notifySalidaTardia(opts: {
+  negocio: string;
+  empleado: string;
+  codigo: string;
+  fecha: string;
+  fechaDisplay: string;
+  horaEntrada: string;
+  horaSalida: string;
+  reportEmails: string[];
+  whatsappGrupoId: string;
+}): Promise<void> {
+  const linea = `🕒 SALIDA TARDÍA (por aprobar) · ${opts.fechaDisplay}`;
+  const detalle = `Entrada ${opts.horaEntrada || '—'} · Salida declarada ${opts.horaSalida}`;
+  const text = `${linea}\n👤 ${opts.empleado} (${opts.codigo})\n🏢 ${opts.negocio}\n${detalle}\n\n⚠️ Requiere aprobación en el panel (Asistencia).`;
+  const to = opts.reportEmails.length ? opts.reportEmails : env.reportEmails;
+
+  await Promise.allSettled([
+    sendMail({
+      to,
+      subject: `${linea} — ${opts.empleado}`,
+      html: `<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.6">${text.replace(/\n/g, '<br>')}</div>`,
+      text,
+    }),
+    opts.whatsappGrupoId ? sendWhatsApp(text, opts.whatsappGrupoId) : Promise.resolve(false),
+  ]);
+}

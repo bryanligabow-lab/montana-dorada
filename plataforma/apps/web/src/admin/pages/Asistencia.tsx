@@ -1,6 +1,13 @@
 import { useState, type ReactNode } from 'react';
 import { useAdmin } from '../ctx';
-import { useAttendance, useDeleteAttendance, useUpdateAttendance, type AttendanceRow } from '../queries';
+import {
+  useAprobarSalida,
+  useAttendance,
+  useDeleteAttendance,
+  useSalidasPendientes,
+  useUpdateAttendance,
+  type AttendanceRow,
+} from '../queries';
 import { Card, MonthInput, Spinner, thisMonth } from '../ui';
 
 function gpsCell(v: boolean | null) {
@@ -37,6 +44,8 @@ export function Asistencia() {
         <MonthInput value={month} onChange={setMonth} />
       </div>
 
+      <SalidasPorAprobar bizId={current.id} />
+
       <Card>
         {q.isLoading ? (
           <Spinner />
@@ -71,7 +80,10 @@ export function Asistencia() {
                         ? `${r.horaAlmuerzoSalida.slice(0, 5)}–${r.horaAlmuerzoRegreso?.slice(0, 5) ?? '…'}`
                         : '–'}
                     </td>
-                    <td className="p-2">{r.horaSalida ?? '–'}</td>
+                    <td className="p-2">
+                      {r.horaSalida ?? '–'}
+                      {r.salidaManual && <SalidaBadge estado={r.salidaAprob} />}
+                    </td>
                     <td
                       className="p-2 font-bold"
                       style={{
@@ -126,6 +138,107 @@ function toInputTime(v: string | null): string {
 }
 function toStoredTime(v: string): string | null {
   return v ? `${v}:00` : null;
+}
+
+/** Etiqueta del estado de una salida registrada manualmente por el empleado. */
+function SalidaBadge({ estado }: { estado: AttendanceRow['salidaAprob'] }) {
+  const map = {
+    PENDIENTE: { txt: 'por aprobar', bg: 'rgba(245,158,11,.18)', fg: '#F59E0B' },
+    APROBADA: { txt: 'manual ✓', bg: 'rgba(67,160,71,.18)', fg: 'var(--c-primary)' },
+    RECHAZADA: { txt: 'rechazada', bg: 'rgba(229,57,53,.15)', fg: 'var(--c-accent)' },
+  } as const;
+  const s = map[estado ?? 'PENDIENTE'] ?? map.PENDIENTE;
+  return (
+    <span className="ml-1 inline-block px-1.5 py-0.5 rounded text-[10px] font-bold align-middle" style={{ background: s.bg, color: s.fg }}>
+      {s.txt}
+    </span>
+  );
+}
+
+/** Bandeja de salidas que los empleados registraron manualmente (olvidos) y esperan aprobación. */
+function SalidasPorAprobar({ bizId }: { bizId: string }) {
+  const q = useSalidasPendientes(bizId);
+  const rows = q.data ?? [];
+  if (!rows.length) return null;
+
+  return (
+    <div
+      className="card p-4 space-y-3"
+      style={{ border: '1px solid rgba(245,158,11,.35)', background: 'rgba(245,158,11,.06)' }}
+    >
+      <div className="flex items-center gap-2">
+        <span className="text-lg">⚠️</span>
+        <h3 className="font-black">Salidas por aprobar ({rows.length})</h3>
+      </div>
+      <p className="text-xs text-muted -mt-1">
+        Un empleado olvidó marcar su salida y la registró después. Verifica que la hora sea correcta; si no,
+        corrígela antes de aprobar. Una salida rechazada no cuenta horas extra.
+      </p>
+      <div className="space-y-2">
+        {rows.map((r) => (
+          <SalidaPendienteRow key={r.id} bizId={bizId} row={r} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function SalidaPendienteRow({ bizId, row }: { bizId: string; row: AttendanceRow }) {
+  const aprobar = useAprobarSalida(bizId);
+  const [hora, setHora] = useState(toInputTime(row.horaSalida));
+  const [err, setErr] = useState('');
+
+  async function decidir(ok: boolean) {
+    setErr('');
+    try {
+      await aprobar.mutateAsync({
+        id: row.id,
+        // Al aprobar se manda la hora (por si el admin la corrigió). Al rechazar no hace falta.
+        data: ok ? { aprobar: true, horaSalida: toStoredTime(hora) ?? undefined } : { aprobar: false },
+      });
+    } catch {
+      setErr('No se pudo guardar.');
+    }
+  }
+
+  return (
+    <div className="rounded-xl p-3" style={{ background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.08)' }}>
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div>
+          <div className="font-bold text-sm">{row.empNombre}</div>
+          <div className="text-xs text-muted">
+            {row.empCodigo} · {row.fecha} · entró {toInputTime(row.horaEntrada) || '—'}
+          </div>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <label className="text-xs text-muted">Salida</label>
+          <input
+            className="field px-2 py-1.5 text-sm"
+            type="time"
+            value={hora}
+            onChange={(e) => setHora(e.target.value)}
+          />
+          <button
+            className="btn-brand px-3 py-1.5 text-xs"
+            disabled={aprobar.isPending || !hora}
+            onClick={() => decidir(true)}
+          >
+            {aprobar.isPending ? '…' : 'Aprobar'}
+          </button>
+          <button
+            className="chip px-3 py-1.5 text-xs"
+            disabled={aprobar.isPending}
+            onClick={() => {
+              if (confirm(`¿Rechazar la salida de ${row.empNombre} del ${row.fecha}? No contará horas extra.`)) decidir(false);
+            }}
+          >
+            Rechazar
+          </button>
+        </div>
+      </div>
+      {err && <div className="text-xs mt-1" style={{ color: 'var(--c-accent)' }}>{err}</div>}
+    </div>
+  );
 }
 
 function EditarAsistencia({ bizId, row, onClose }: { bizId: string; row: AttendanceRow; onClose: () => void }) {

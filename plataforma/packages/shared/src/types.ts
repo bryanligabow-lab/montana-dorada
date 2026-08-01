@@ -13,6 +13,9 @@ export type HoraExtraTipo = 'PORCENTAJE' | 'FIJO';
 /** Estado de la entrada respecto a la hora límite del negocio. */
 export type AttendanceState = 'TEMPRANO' | 'A_TIEMPO' | 'TARDE';
 
+/** Estado de aprobación de una salida registrada manualmente (olvido). null = marcación normal, no requiere aprobación. */
+export type SalidaAprob = 'PENDIENTE' | 'APROBADA' | 'RECHAZADA';
+
 /** Las 4 marcaciones posibles en un día. */
 export type ClockAction = 'entrada' | 'almuerzo_salida' | 'almuerzo_regreso' | 'salida';
 
@@ -78,6 +81,10 @@ export interface Business {
   reportWhatsapp: string[];
   /** JID o número del grupo de WhatsApp que se notifica en cada marcación (entrada/salida/almuerzo). */
   whatsappGrupoId: string;
+  /** Enviar por WhatsApp un recordatorio a cada empleado antes de su hora de salida (para que no olviden marcar). */
+  recordatorioSalidaActivo: boolean;
+  /** Minutos antes de la hora de salida esperada en que se envía el recordatorio. */
+  recordatorioSalidaMin: number;
   /** Suscripción activa. Si es false, el negocio está suspendido. */
   activo: boolean;
   createdAt: string;
@@ -137,6 +144,10 @@ export interface Attendance {
   gpsValido: boolean | null;
   ip: string | null;
   userAgent: string | null;
+  /** La salida fue registrada manualmente por el empleado al día siguiente (olvidó marcarla). */
+  salidaManual: boolean;
+  /** Estado de aprobación de esa salida manual. null = salida normal (en vivo), no requiere aprobación. */
+  salidaAprob: SalidaAprob | null;
 }
 
 export interface Punctuality {

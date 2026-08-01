@@ -14,6 +14,7 @@ import type {
   NominaRow,
   PlatformUser,
   PunctualitySummary,
+  SalidaAprobarInput,
   UserCreateInput,
   UserUpdateInput,
 } from '@asis/shared';
@@ -98,6 +99,26 @@ function invalidateAttendanceDerived(qc: ReturnType<typeof useQueryClient>, bizI
   qc.invalidateQueries({ queryKey: ['ranking', bizId] });
   qc.invalidateQueries({ queryKey: ['nomina', bizId] });
   qc.invalidateQueries({ queryKey: ['audit', bizId] });
+  qc.invalidateQueries({ queryKey: ['salidas-pendientes', bizId] });
+}
+
+/** Salidas registradas manualmente por los empleados (olvidos) que esperan aprobación. */
+export function useSalidasPendientes(bizId: string) {
+  return useQuery({
+    queryKey: ['salidas-pendientes', bizId],
+    queryFn: () =>
+      api<AttendanceRow[]>(`/api/admin/businesses/${bizId}/salidas-pendientes`, { auth: true }),
+  });
+}
+
+/** Aprueba (opcionalmente corrigiendo la hora) o rechaza una salida manual. */
+export function useAprobarSalida(bizId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: SalidaAprobarInput }) =>
+      api<Attendance>(`/api/admin/attendance/${id}/aprobar-salida`, { method: 'POST', body: data, auth: true }),
+    onSuccess: () => invalidateAttendanceDerived(qc, bizId),
+  });
 }
 
 export function useUpdateAttendance(bizId: string) {

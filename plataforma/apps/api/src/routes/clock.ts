@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
-import { clockMotivoSchema, clockRequestSchema } from '@asis/shared';
+import { clockMotivoSchema, clockRequestSchema, clockSalidaManualSchema } from '@asis/shared';
 import { getDb } from '../db';
-import { clock, clockMotivo, getClockContext } from '../services/clock';
+import { clock, clockMotivo, getClockContext, registrarSalidaManual } from '../services/clock';
 
 export async function clockRoutes(app: FastifyInstance): Promise<void> {
   // Contexto para pintar la PWA al abrir el QR.
@@ -30,6 +30,18 @@ export async function clockRoutes(app: FastifyInstance): Promise<void> {
     const parsed = clockMotivoSchema.safeParse(req.body);
     if (!parsed.success) return reply.code(400).send({ error: 'datos_invalidos' });
     const result = await clockMotivo(
+      { db: await getDb(), ip: req.ip, ua: req.headers['user-agent'] ?? null },
+      parsed.data,
+    );
+    if (!result) return reply.code(404).send({ error: 'qr_invalido' });
+    return result;
+  });
+
+  // Registrar manualmente la salida de un día olvidado (queda pendiente de aprobación).
+  app.post('/api/clock/salida-manual', async (req, reply) => {
+    const parsed = clockSalidaManualSchema.safeParse(req.body);
+    if (!parsed.success) return reply.code(400).send({ error: 'datos_invalidos' });
+    const result = await registrarSalidaManual(
       { db: await getDb(), ip: req.ip, ua: req.headers['user-agent'] ?? null },
       parsed.data,
     );

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import type { ClockAction, ClockContext, ClockResult } from '@asis/shared';
+import type { ClockAction, ClockContext, ClockResult, PendienteSalida } from '@asis/shared';
 import { MEDAL_LEVELS } from '@asis/shared';
 import { api, ApiError } from '../lib/api';
 import { applyBranding } from '../lib/theme';
@@ -40,6 +40,8 @@ export function MarcarPage() {
   const [result, setResult] = useState<ClockResult | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+  // Días anteriores con salida sin marcar: hay que registrarlas antes de poder marcar hoy.
+  const [pendientes, setPendientes] = useState<PendienteSalida[]>([]);
 
   useEffect(() => {
     let alive = true;
@@ -47,6 +49,7 @@ export function MarcarPage() {
       .then((c) => {
         if (!alive) return;
         setCtx(c);
+        setPendientes(c.pendientesSalida ?? []);
         applyBranding(c.business.branding);
         setPhase('ready');
         if (c.business.gpsRequerido) requestGps(c);
@@ -58,6 +61,36 @@ export function MarcarPage() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
+
+  // Refresca el contexto tras cerrar los días pendientes (para que aparezcan las acciones normales).
+  async function reloadContext() {
+    try {
+      const c = await api<ClockContext>(`/api/clock/context?token=${encodeURIComponent(token)}`);
+      setCtx(c);
+      setPendientes(c.pendientesSalida ?? []);
+    } catch {
+      /* si falla, se queda con lo que tenía */
+    }
+  }
+
+  async function registrarSalidaManual(attendanceId: string, horaSalida: string) {
+    setBusy(true);
+    setErr('');
+    try {
+      const r = await api<ClockResult>('/api/clock/salida-manual', {
+        method: 'POST',
+        body: { token, attendanceId, horaSalida },
+      });
+      if (r.kind === 'salida_manual_ok') {
+        setPendientes(r.restantes);
+        if (r.restantes.length === 0) await reloadContext(); // ya puede marcar su entrada
+      }
+    } catch (e) {
+      setErr(e instanceof ApiError ? e.code : 'error_de_red');
+    } finally {
+      setBusy(false);
+    }
+  }
 
   function requestGps(c: ClockContext) {
     if (!navigator.geolocation) {
@@ -102,6 +135,11 @@ export function MarcarPage() {
         method: 'POST',
         body: { token, lat: gps.lat, lng: gps.lng, action },
       });
+      // Si el servidor detecta días sin salida, muestra el formulario en vez del resultado.
+      if (r.kind === 'salida_pendiente') {
+        setPendientes(r.pendientes);
+        return;
+      }
       setResult(r);
       setPhase('result');
     } catch (e) {
@@ -158,6 +196,16 @@ export function MarcarPage() {
             </div>
 
             <div className="p-5">
+              {pendientes.length > 0 ? (
+                <PendientesSalidaView
+                  key={pendientes[0]?.attendanceId}
+                  pendientes={pendientes}
+                  onSubmit={registrarSalidaManual}
+                  busy={busy}
+                  err={err}
+                />
+              ) : (
+              <>
               {ctx.business.gpsRequerido && (
                 <div
                   className="rounded-2xl p-4 text-center mb-4"
@@ -207,6 +255,8 @@ export function MarcarPage() {
                 </div>
               )}
               {err && <div className="text-center text-sm mt-3" style={{ color: 'var(--c-accent)' }}>{traducirError(err)}</div>}
+              </>
+              )}
             </div>
           </div>
         )}
@@ -223,6 +273,68 @@ function traducirError(code: string): string {
   if (code === 'qr_invalido') return 'QR no válido.';
   if (code === 'datos_invalidos') return 'No se pudo procesar la ubicación.';
   return 'Hubo un problema. Intenta de nuevo.';
+}
+
+/** Formulario para registrar (tarde) la salida de un día que el empleado olvidó marcar. */
+function PendientesSalidaView({
+  pendientes,
+  onSubmit,
+  busy,
+  err,
+}: {
+  pendientes: PendienteSalida[];
+  onSubmit: (attendanceId: string, horaSalida: string) => void;
+  busy: boolean;
+  err: string;
+}) {
+  const p = pendientes[0]!; // se resuelve el día más antiguo primero
+  const [hora, setHora] = useState('');
+
+  return (
+    <div>
+      <div
+        className="rounded-2xl p-4 mb-4 text-center"
+        style={{ background: 'rgba(245,158,11,.10)', border: '1px solid rgba(245,158,11,.3)' }}
+      >
+        <div className="text-3xl mb-1">🕒</div>
+        <div className="text-lg font-black">Te faltó marcar tu salida</div>
+        <div className="text-sm text-muted mt-1">
+          Antes de marcar hoy, registra la salida del <b>{p.fechaDisplay}</b>.
+        </div>
+      </div>
+
+      <div className="rounded-2xl overflow-hidden mb-3" style={{ border: '1px solid rgba(255,255,255,.08)' }}>
+        <Row k="Día" v={p.fechaDisplay} />
+        <Row k="Entrada" v={p.horaEntrada ? p.horaEntrada.slice(0, 5) : '—'} />
+      </div>
+
+      <label className="block text-xs text-muted mb-1">¿A qué hora saliste ese día?</label>
+      <input
+        className="field w-full px-3 py-3 text-base mb-3"
+        type="time"
+        value={hora}
+        onChange={(e) => setHora(e.target.value)}
+      />
+      <button
+        className="btn-brand w-full py-4 text-base"
+        disabled={busy || !hora}
+        onClick={() => onSubmit(p.attendanceId, `${hora}:00`)}
+      >
+        {busy ? 'Registrando…' : 'Registrar salida'}
+      </button>
+      <p className="text-xs text-muted mt-2 text-center">
+        Quedará pendiente de aprobación. Después podrás marcar tu entrada de hoy con normalidad.
+      </p>
+      {pendientes.length > 1 && (
+        <p className="text-xs text-muted mt-1 text-center">Te faltan {pendientes.length} días por registrar.</p>
+      )}
+      {err && (
+        <div className="text-center text-sm mt-3" style={{ color: 'var(--c-accent)' }}>
+          {traducirError(err)}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function Row({ k, v, color }: { k: string; v: string; color?: string }) {

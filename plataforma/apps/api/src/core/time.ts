@@ -63,6 +63,12 @@ export function timeStrInTz(date: Date, tz: string): string {
   return `${pad(p.hour)}:${pad(p.minute)}:${pad(p.second)}`;
 }
 
+/** Milisegundos transcurridos desde la medianoche local (en la zona `tz`). */
+export function msLocalDelDia(date: Date, tz: string): number {
+  const p = partsInTz(date, tz);
+  return ((p.hour * 60 + p.minute) * 60 + p.second) * 1000;
+}
+
 /**
  * Inversa de `partsInTz`: reconstruye el instante UTC de una fecha+hora
  * locales ('yyyy-MM-dd' + 'HH:mm:ss') en la zona `tz`. Usa una corrección

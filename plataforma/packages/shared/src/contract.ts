@@ -3,6 +3,17 @@ import type { AttendanceState, Business, BusinessBranding, ClockAction, MedalLev
 
 // ─── Marcación (PWA) ─────────────────────────────────────────────────────────
 
+/** Un día anterior en el que el empleado entró pero nunca marcó su salida. Debe registrarla (manual) antes de poder marcar de nuevo. */
+export interface PendienteSalida {
+  attendanceId: string;
+  /** 'yyyy-MM-dd' del día operativo con la salida pendiente. */
+  fecha: string;
+  /** 'dd/MM/yyyy' para mostrar. */
+  fechaDisplay: string;
+  /** Hora de entrada de ese día (referencia para el empleado). */
+  horaEntrada: string | null;
+}
+
 /** Contexto que la PWA pide al abrir el QR, para pintarse y mostrar al empleado. */
 export interface ClockContext {
   business: {
@@ -17,6 +28,8 @@ export interface ClockContext {
   employee: { nombre: string; codigo: string };
   /** Marcaciones que el empleado puede hacer ahora (según lo que ya marcó hoy). */
   acciones: ClockAction[];
+  /** Días anteriores con salida sin marcar: el empleado debe registrarlas antes de poder marcar hoy. */
+  pendientesSalida: PendienteSalida[];
   /** Si el negocio está suspendido (falta de pago), no se puede marcar. */
   suspendido: boolean;
 }
@@ -37,6 +50,14 @@ export const clockMotivoSchema = z.object({
 });
 export type ClockMotivoInput = z.infer<typeof clockMotivoSchema>;
 
+/** El empleado registra manualmente la salida de un día anterior que olvidó marcar. Queda pendiente de aprobación. */
+export const clockSalidaManualSchema = z.object({
+  token: z.string().min(8),
+  attendanceId: z.string().uuid(),
+  horaSalida: z.string().regex(/^\d{2}:\d{2}:\d{2}$/),
+});
+export type ClockSalidaManualInput = z.infer<typeof clockSalidaManualSchema>;
+
 /** Resultado de una marcación. La PWA hace switch sobre `kind`. */
 export type ClockResult =
   | { kind: 'entrada'; nombre: string; fecha: string; horaEntrada: string; estado: AttendanceState; minTemprano: number; minTarde: number; medal: MedalLevel | null }
@@ -48,7 +69,11 @@ export type ClockResult =
   | { kind: 'completo'; nombre: string; fecha: string }
   | { kind: 'duplicado'; nombre: string }
   | { kind: 'suspendido'; nombre: string }
-  | { kind: 'fuera_de_rango'; nombre: string; distM: number; radioM: number };
+  | { kind: 'fuera_de_rango'; nombre: string; distM: number; radioM: number }
+  // Tiene días anteriores sin salida: debe registrarlas antes de poder marcar entrada hoy.
+  | { kind: 'salida_pendiente'; nombre: string; pendientes: PendienteSalida[] }
+  // Registró (manualmente) la salida de un día olvidado; queda pendiente de aprobación. `restantes` son los días que aún faltan.
+  | { kind: 'salida_manual_ok'; nombre: string; fecha: string; horaSalida: string; restantes: PendienteSalida[] };
 
 // ─── Auth (panel) ────────────────────────────────────────────────────────────
 
@@ -147,6 +172,10 @@ export const businessCreateSchema = z.object({
   reportWhatsapp: z.array(z.string().min(6)).default([]),
   /** JID o número del grupo de WhatsApp notificado en cada marcación. Vacío = desactivado. */
   whatsappGrupoId: z.string().default(''),
+  /** Enviar recordatorio de salida por WhatsApp a los empleados. */
+  recordatorioSalidaActivo: z.boolean().default(false),
+  /** Minutos antes de la hora de salida esperada en que se envía el recordatorio. */
+  recordatorioSalidaMin: z.number().int().min(1).max(240).default(30),
 });
 export type BusinessCreateInput = z.infer<typeof businessCreateSchema>;
 
@@ -178,6 +207,8 @@ export const businessUpdateSchema = z.object({
   reportEmails: z.array(z.string().email()).optional(),
   reportWhatsapp: z.array(z.string().min(6)).optional(),
   whatsappGrupoId: z.string().optional(),
+  recordatorioSalidaActivo: z.boolean().optional(),
+  recordatorioSalidaMin: z.number().int().min(1).max(240).optional(),
 });
 export type BusinessUpdateInput = z.infer<typeof businessUpdateSchema>;
 
@@ -190,6 +221,14 @@ export const attendanceUpdateSchema = z.object({
   horaAlmuerzoRegreso: z.string().regex(timeRegex).nullable().optional(),
 });
 export type AttendanceUpdateInput = z.infer<typeof attendanceUpdateSchema>;
+
+/** Aprobar (opcionalmente corrigiendo la hora) o rechazar una salida registrada manualmente por el empleado. */
+export const salidaAprobarSchema = z.object({
+  aprobar: z.boolean(),
+  /** Si se aprueba con una hora corregida, reemplaza la que envió el empleado. */
+  horaSalida: z.string().regex(timeRegex).optional(),
+});
+export type SalidaAprobarInput = z.infer<typeof salidaAprobarSchema>;
 
 // ─── Nómina ──────────────────────────────────────────────────────────────────
 

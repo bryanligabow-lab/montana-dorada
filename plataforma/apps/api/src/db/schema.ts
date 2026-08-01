@@ -16,6 +16,7 @@ import type {
   FrecuenciaSueldo,
   HoraExtraTipo,
   Role,
+  SalidaAprob,
   TipoSueldo,
   WeekSchedule,
 } from '@asis/shared';
@@ -65,6 +66,10 @@ export const businesses = pgTable('businesses', {
   reportWhatsapp: jsonb('report_whatsapp').$type<string[]>().notNull().default([]),
   /** JID o número del grupo de WhatsApp notificado en cada marcación. Vacío = desactivado. */
   whatsappGrupoId: text('whatsapp_grupo_id').notNull().default(''),
+  /** Enviar recordatorio de salida por WhatsApp a los empleados antes de su hora de salida. */
+  recordatorioSalidaActivo: boolean('recordatorio_salida_activo').notNull().default(false),
+  /** Minutos antes de la hora de salida esperada en que se envía el recordatorio. */
+  recordatorioSalidaMin: integer('recordatorio_salida_min').notNull().default(30),
   /** Suscripción activa. Si es false, el negocio queda suspendido (nadie marca ni entra). */
   activo: boolean('activo').notNull().default(true),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -131,6 +136,10 @@ export const attendance = pgTable(
     gpsValido: boolean('gps_valido'),
     ip: text('ip'),
     userAgent: text('user_agent'),
+    /** La salida la registró el empleado al día siguiente (olvidó marcarla ese día). */
+    salidaManual: boolean('salida_manual').notNull().default(false),
+    /** Aprobación de la salida manual: 'PENDIENTE'|'APROBADA'|'RECHAZADA'. null = salida normal (en vivo). */
+    salidaAprob: text('salida_aprob').$type<SalidaAprob>(),
   },
   (t) => ({ uqDia: unique('uq_att_dia').on(t.employeeId, t.fecha) }),
 );

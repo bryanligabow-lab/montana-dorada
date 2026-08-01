@@ -7,7 +7,8 @@ import { eq } from 'drizzle-orm';
 import type { DB } from '../db';
 import { attendance, businesses, employees, punctuality } from '../db/schema';
 import * as schema from '../db/schema';
-import { clock, clockMotivo, getClockContext } from './clock';
+import { clock, clockMotivo, getClockContext, registrarSalidaManual } from './clock';
+import { aprobarSalida } from './attendance';
 
 async function setup(): Promise<DB> {
   const client = new PGlite();
@@ -266,9 +267,76 @@ describe('flujo de marcación (integración con PGlite)', () => {
     const lunes = await clock({ db, now: new Date('2026-06-29T13:30:00Z') }, { token: 'tokenSEMANAW1', action: 'entrada' });
     expect(lunes?.kind).toBe('tardanza_motivo');
 
+    // Cierra el lunes con su salida; si no, el martes se bloquearía por "salida pendiente" del día anterior.
+    const salidaLunes = await clock({ db, now: new Date('2026-06-29T23:00:00Z') }, { token: 'tokenSEMANAW1', action: 'salida' });
+    expect(salidaLunes?.kind).toBe('salida');
+
     // Martes 30-jun (límite 10:00, día distinto): mismo reloj 08:30 local (13:30Z) → TEMPRANO.
     const martes = await clock({ db, now: new Date('2026-06-30T13:30:00Z') }, { token: 'tokenSEMANAW1', action: 'entrada' });
     expect(martes?.kind).toBe('entrada');
     if (martes?.kind === 'entrada') expect(martes.estado).toBe('TEMPRANO');
+  });
+
+  it('olvido de salida: bloquea la entrada del día siguiente hasta registrar la salida manual (queda pendiente)', async () => {
+    const db = await setup();
+    const biz = (
+      await db
+        .insert(businesses)
+        .values({
+          slug: 'olvido',
+          nombre: 'Olvido',
+          timezone: 'America/Guayaquil',
+          radioMetros: 80,
+          horarios: horariosFijos('08:00:00'),
+          horariosSalida: horariosFijos('17:00:00'),
+          multaMonto: 0.1,
+          multaIntervaloMin: 1,
+          dayCutoffHour: 2,
+          gpsRequerido: false,
+        })
+        .returning()
+    )[0]!;
+    await db
+      .insert(employees)
+      .values({ businessId: biz.id, codigo: 'O1', qrToken: 'tokenOLVIDOO1', nombre: 'Oscar' });
+
+    // Día 1 (lunes 29-jun): entra 07:30 local (12:30Z), NUNCA marca salida.
+    const d1 = await clock({ db, now: new Date('2026-06-29T12:30:00Z') }, { token: 'tokenOLVIDOO1', action: 'entrada' });
+    expect(d1?.kind).toBe('entrada');
+
+    // Día 2 (martes 30-jun): intenta entrar → bloqueado por la salida pendiente del día anterior.
+    const bloqueo = await clock({ db, now: new Date('2026-06-30T12:30:00Z') }, { token: 'tokenOLVIDOO1', action: 'entrada' });
+    expect(bloqueo?.kind).toBe('salida_pendiente');
+    let pendId = '';
+    if (bloqueo?.kind === 'salida_pendiente') {
+      expect(bloqueo.pendientes).toHaveLength(1);
+      expect(bloqueo.pendientes[0]!.fecha).toBe('2026-06-29');
+      pendId = bloqueo.pendientes[0]!.attendanceId;
+    }
+
+    // El contexto de la PWA también refleja el pendiente.
+    const ctx = await getClockContext(db, 'tokenOLVIDOO1', new Date('2026-06-30T12:30:00Z'));
+    expect(ctx?.pendientesSalida).toHaveLength(1);
+
+    // Registra la salida del día olvidado → queda PENDIENTE, sin días restantes.
+    const sm = await registrarSalidaManual(
+      { db, now: new Date('2026-06-30T12:31:00Z') },
+      { token: 'tokenOLVIDOO1', attendanceId: pendId, horaSalida: '17:05:00' },
+    );
+    expect(sm?.kind).toBe('salida_manual_ok');
+    if (sm?.kind === 'salida_manual_ok') expect(sm.restantes).toHaveLength(0);
+
+    const row = (await db.select().from(attendance).where(eq(attendance.id, pendId)).limit(1))[0]!;
+    expect(row.salidaManual).toBe(true);
+    expect(row.salidaAprob).toBe('PENDIENTE');
+    expect(row.horaSalida).toBe('17:05:00');
+
+    // Ahora sí puede marcar su entrada de hoy, sin esperar la aprobación.
+    const d2 = await clock({ db, now: new Date('2026-06-30T12:32:00Z') }, { token: 'tokenOLVIDOO1', action: 'entrada' });
+    expect(d2?.kind).toBe('entrada');
+
+    // El panel aprueba la salida manual → queda APROBADA.
+    const aprobada = await aprobarSalida(db, row, true);
+    expect(aprobada.salidaAprob).toBe('APROBADA');
   });
 });

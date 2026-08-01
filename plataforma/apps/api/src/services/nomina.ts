@@ -42,7 +42,13 @@ export async function calcularNominaNegocio(
     .where(and(eq(advances.businessId, bizId), gte(advances.fecha, from), lte(advances.fecha, to)));
 
   const attByEmp = new Map<string, typeof attRows>();
-  for (const a of attRows) attByEmp.set(a.employeeId, [...(attByEmp.get(a.employeeId) ?? []), a]);
+  for (const a of attRows) {
+    // Una salida manual solo cuenta (horas/horas extra) cuando el panel la aprobó. Pendiente o rechazada
+    // se trata como "sin salida" para no pagar horas extra de un horario aún sin validar.
+    const salidaCuenta = !a.salidaManual || a.salidaAprob === 'APROBADA';
+    const row = salidaCuenta ? a : { ...a, salidaAt: null };
+    attByEmp.set(a.employeeId, [...(attByEmp.get(a.employeeId) ?? []), row]);
+  }
   const puntByEmp = new Map<string, typeof puntRows>();
   for (const p of puntRows) puntByEmp.set(p.employeeId, [...(puntByEmp.get(p.employeeId) ?? []), p]);
   const advByEmp = new Map<string, typeof advRows>();

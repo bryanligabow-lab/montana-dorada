@@ -30,6 +30,9 @@ export async function updateAttendanceRecord(db: DB, row: Att, patch: Attendance
   if (patch.horaSalida !== undefined) {
     set.horaSalida = patch.horaSalida;
     set.salidaAt = patch.horaSalida ? zonedTimeToUtc(row.fecha, patch.horaSalida, biz.timezone) : null;
+    // El admin corrige la salida: pasa a ser autoritativa (deja de ser una salida manual pendiente).
+    set.salidaManual = false;
+    set.salidaAprob = null;
   }
   if (patch.horaAlmuerzoSalida !== undefined) {
     set.horaAlmuerzoSalida = patch.horaAlmuerzoSalida;
@@ -78,6 +81,42 @@ export async function updateAttendanceRecord(db: DB, row: Att, patch: Attendance
     let ms = salidaAt.getTime() - entradaAt.getTime();
     if (almSalidaAt && almRegresoAt) ms -= almRegresoAt.getTime() - almSalidaAt.getTime();
     set.horasTrabajadas = ms > 0 ? formatDuration(ms) : '';
+  }
+
+  await db.update(attendance).set(set).where(eq(attendance.id, row.id));
+  return (await db.select().from(attendance).where(eq(attendance.id, row.id)).limit(1))[0]!;
+}
+
+/**
+ * Aprueba o rechaza una salida que el empleado registró manualmente (olvido de marcación).
+ * - Aprobar: `salidaAprob='APROBADA'` (opcionalmente corrigiendo la hora declarada). A partir de aquí
+ *   cuenta para las horas extra de la nómina.
+ * - Rechazar: `salidaAprob='RECHAZADA'`. La salida queda registrada (para no re-pedirla) pero NO cuenta
+ *   horas extra. El admin puede luego editar el registro para fijar la hora real.
+ */
+export async function aprobarSalida(
+  db: DB,
+  row: Att,
+  aprobar: boolean,
+  horaSalida?: string,
+): Promise<Att> {
+  const set: Partial<typeof attendance.$inferInsert> = {
+    salidaAprob: aprobar ? 'APROBADA' : 'RECHAZADA',
+  };
+
+  // Aprobar corrigiendo la hora: recalcula salidaAt y horas trabajadas con la hora real.
+  if (aprobar && horaSalida) {
+    const biz = (await db.select().from(businesses).where(eq(businesses.id, row.businessId)).limit(1))[0]!;
+    const salidaAt = zonedTimeToUtc(row.fecha, horaSalida, biz.timezone);
+    set.horaSalida = horaSalida;
+    set.salidaAt = salidaAt;
+    if (row.entradaAt) {
+      let ms = salidaAt.getTime() - new Date(row.entradaAt).getTime();
+      if (row.almuerzoSalidaAt && row.almuerzoRegresoAt) {
+        ms -= new Date(row.almuerzoRegresoAt).getTime() - new Date(row.almuerzoSalidaAt).getTime();
+      }
+      set.horasTrabajadas = ms > 0 ? formatDuration(ms) : '';
+    }
   }
 
   await db.update(attendance).set(set).where(eq(attendance.id, row.id));

@@ -1,12 +1,12 @@
-import { and, eq } from 'drizzle-orm';
+import { and, asc, eq, isNull, lt } from 'drizzle-orm';
 import { MIN_MINUTES_BETWEEN_ENTRY_EXIT, MOTIVOS_TARDANZA } from '@asis/shared';
-import type { ClockAction, ClockContext, ClockResult } from '@asis/shared';
+import type { ClockAction, ClockContext, ClockResult, PendienteSalida } from '@asis/shared';
 import type { DB } from '../db';
 import { attendance, businesses, employees, punctuality } from '../db/schema';
-import { businessDate, formatDuration, hhmmssToMs, horaLimite, timeStrInTz } from '../core/time';
+import { businessDate, fechaDisplay, formatDuration, hhmmssToMs, horaLimite, timeStrInTz, zonedTimeToUtc } from '../core/time';
 import { checkGps } from '../core/gps';
 import { calcularMultaGanada, computeMulta, evalEntrada } from '../core/punctuality';
-import { notifyMarcacion } from '../reports/notify';
+import { notifyMarcacion, notifySalidaTardia } from '../reports/notify';
 
 type Biz = typeof businesses.$inferSelect;
 type Emp = typeof employees.$inferSelect;
@@ -66,6 +66,34 @@ async function rowDeHoy(db: DB, empId: string, fecha: string): Promise<Att | und
   )[0];
 }
 
+/**
+ * Días anteriores a `fechaHoy` en los que el empleado entró pero nunca marcó su salida.
+ * Deben resolverse (registrando la salida manual) antes de que pueda marcar una nueva entrada.
+ */
+async function pendientesSalidaPrevias(db: DB, empId: string, fechaHoy: string): Promise<PendienteSalida[]> {
+  const rows = await db
+    .select()
+    .from(attendance)
+    .where(
+      and(
+        eq(attendance.employeeId, empId),
+        lt(attendance.fecha, fechaHoy),
+        isNull(attendance.salidaAt),
+        isNull(attendance.horaSalida),
+      ),
+    )
+    .orderBy(asc(attendance.fecha));
+  // Solo cuenta como "olvido de salida" si de verdad hubo entrada ese día.
+  return rows
+    .filter((r) => r.horaEntrada || r.entradaAt)
+    .map((r) => ({
+      attendanceId: r.id,
+      fecha: r.fecha,
+      fechaDisplay: fechaDisplay(r.fecha),
+      horaEntrada: r.horaEntrada ?? null,
+    }));
+}
+
 export async function getClockContext(
   db: DB,
   token: string,
@@ -76,6 +104,7 @@ export async function getClockContext(
   const { emp, biz } = r;
   const fecha = businessDate(now, biz.timezone, biz.dayCutoffHour);
   const row = await rowDeHoy(db, emp.id, fecha);
+  const pendientesSalida = biz.activo ? await pendientesSalidaPrevias(db, emp.id, fecha) : [];
   return {
     business: {
       nombre: biz.nombre,
@@ -88,6 +117,7 @@ export async function getClockContext(
     },
     employee: { nombre: emp.nombre, codigo: emp.codigo },
     acciones: biz.activo ? accionesDisponibles(row, biz.controlAlmuerzo) : [],
+    pendientesSalida,
     suspendido: !biz.activo,
   };
 }
@@ -118,6 +148,13 @@ export async function clock(
   const action =
     input.action && acciones.includes(input.action) ? input.action : autoAction(acciones);
   if (!action) return { kind: 'completo', nombre: emp.nombre, fecha };
+
+  // Antes de abrir un nuevo día, exige que el empleado cierre los días anteriores en que
+  // olvidó marcar su salida (deben registrarla manualmente, queda pendiente de aprobación).
+  if (action === 'entrada') {
+    const pendientes = await pendientesSalidaPrevias(db, emp.id, fecha);
+    if (pendientes.length > 0) return { kind: 'salida_pendiente', nombre: emp.nombre, pendientes };
+  }
 
   const hora = timeStrInTz(now, biz.timezone);
 
@@ -286,6 +323,66 @@ export async function clockMotivo(
   };
   notify(biz, emp, res);
   return res;
+}
+
+/**
+ * El empleado registra manualmente la salida de un día anterior que olvidó marcar.
+ * La salida queda como `PENDIENTE` de aprobación por el panel (no cuenta horas extra hasta aprobarse),
+ * pero deja de bloquear la marcación de hoy: tras registrarla puede marcar su entrada de inmediato.
+ */
+export async function registrarSalidaManual(
+  ctx: ClockCtx,
+  input: { token: string; attendanceId: string; horaSalida: string },
+): Promise<ClockResult | null> {
+  const { db } = ctx;
+  const now = ctx.now ?? new Date();
+  const r = await resolve(db, input.token);
+  if (!r) return null;
+  const { emp, biz } = r;
+
+  const row = (await db.select().from(attendance).where(eq(attendance.id, input.attendanceId)).limit(1))[0];
+  // La fila debe existir, ser de este empleado y estar realmente abierta (sin salida).
+  if (!row || row.employeeId !== emp.id) return null;
+  const fechaHoy = businessDate(now, biz.timezone, biz.dayCutoffHour);
+  if (row.horaSalida || row.salidaAt || row.fecha >= fechaHoy) {
+    // Ya no está pendiente (o no es un día anterior): devuelve el estado actual sin duplicar.
+    const restantes = await pendientesSalidaPrevias(db, emp.id, fechaHoy);
+    return { kind: 'salida_manual_ok', nombre: emp.nombre, fecha: row.fecha, horaSalida: row.horaSalida ?? '', restantes };
+  }
+
+  const salidaAt = zonedTimeToUtc(row.fecha, input.horaSalida, biz.timezone);
+  let ms = row.entradaAt ? salidaAt.getTime() - new Date(row.entradaAt).getTime() : 0;
+  if (row.almuerzoSalidaAt && row.almuerzoRegresoAt) {
+    ms -= new Date(row.almuerzoRegresoAt).getTime() - new Date(row.almuerzoSalidaAt).getTime();
+  }
+  const horasTxt = ms > 0 ? formatDuration(ms) : '';
+
+  await db
+    .update(attendance)
+    .set({
+      horaSalida: input.horaSalida,
+      salidaAt,
+      horasTrabajadas: horasTxt,
+      salidaManual: true,
+      salidaAprob: 'PENDIENTE',
+    })
+    .where(eq(attendance.id, row.id));
+
+  // Avisa al negocio que hay una salida tardía por aprobar (no bloquea la respuesta).
+  void notifySalidaTardia({
+    negocio: biz.nombre,
+    empleado: emp.nombre,
+    codigo: emp.codigo,
+    fecha: row.fecha,
+    fechaDisplay: fechaDisplay(row.fecha),
+    horaEntrada: row.horaEntrada ?? '',
+    horaSalida: input.horaSalida,
+    reportEmails: biz.reportEmails,
+    whatsappGrupoId: biz.whatsappGrupoId,
+  }).catch(() => {});
+
+  const restantes = await pendientesSalidaPrevias(db, emp.id, fechaHoy);
+  return { kind: 'salida_manual_ok', nombre: emp.nombre, fecha: row.fecha, horaSalida: input.horaSalida, restantes };
 }
 
 export interface PuntInput {

@@ -200,6 +200,9 @@ function CrearNegocio({ onClose }: { onClose: () => void }) {
         .map((s) => s.trim())
         .filter(Boolean),
       whatsappGrupoId: f.whatsappGrupoId.trim(),
+      // El recordatorio de salida arranca desactivado; se ajusta luego en Configuración.
+      recordatorioSalidaActivo: false,
+      recordatorioSalidaMin: 30,
     };
     try {
       await create.mutateAsync(data);
