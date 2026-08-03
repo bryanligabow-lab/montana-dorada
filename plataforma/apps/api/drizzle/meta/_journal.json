@@ -71,6 +71,13 @@
       "when": 1785606204122,
       "tag": "0009_white_lenny_balinger",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1785799328761,
+      "tag": "0010_vengeful_tombstone",
+      "breakpoints": true
     }
   ]
 }

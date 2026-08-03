@@ -36,5 +36,15 @@ export const env = {
     instance: process.env.EVOLUTION_INSTANCE ?? '',
     /** JID del grupo de WhatsApp destino (…@g.us) o número. */
     group: process.env.WHATSAPP_GROUP ?? '',
+    /** Instancia SEPARADA para el chatbot (número propio, no el de la empresa). */
+    botInstance: process.env.EVOLUTION_BOT_INSTANCE ?? 'asistencia-bot',
   },
+  anthropic: {
+    apiKey: process.env.ANTHROPIC_API_KEY ?? '',
+    /** Modelo del chatbot. Haiku 4.5 = mejor costo para comandos simples; subir a claude-sonnet-5 si se necesita más inteligencia. */
+    model: process.env.ANTHROPIC_MODEL ?? 'claude-haiku-4-5',
+  },
+  /** URL pública de esta API (para registrar el webhook del bot en Evolution). */
+  publicApiUrl:
+    process.env.PUBLIC_API_URL ?? 'https://contabilidad-mateai-asistencia-api.dtuoap.easypanel.host',
 };

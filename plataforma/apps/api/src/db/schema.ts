@@ -187,6 +187,34 @@ export const advances = pgTable('advances', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
+/** Números de WhatsApp autorizados a usar el chatbot: cada fila enlaza un número (dueño) con un negocio. */
+export const botNumbers = pgTable(
+  'bot_numbers',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    businessId: uuid('business_id')
+      .notNull()
+      .references(() => businesses.id, { onDelete: 'cascade' }),
+    /** Número de WhatsApp (formato libre; se compara por los últimos 9 dígitos). */
+    numero: text('numero').notNull(),
+    /** Etiqueta para saber de quién es (p. ej. "Fernanda — dueña"). */
+    nombre: text('nombre').notNull().default(''),
+    activo: boolean('activo').notNull().default(true),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({ uqNumero: unique('uq_bot_num').on(t.businessId, t.numero) }),
+);
+
+/** Estado de conversación del chatbot por número: negocio activo + historial corto para dar contexto a la IA. */
+export const botSessions = pgTable('bot_sessions', {
+  /** Número normalizado (últimos 9 dígitos). */
+  numero: text('numero').primaryKey(),
+  businessId: uuid('business_id'),
+  /** Últimos turnos [{role:'user'|'assistant', content:string}] para follow-ups ("y a María también"). */
+  historial: jsonb('historial').$type<{ role: 'user' | 'assistant'; content: string }[]>().notNull().default([]),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const users = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom(),
   email: text('email').notNull().unique(),

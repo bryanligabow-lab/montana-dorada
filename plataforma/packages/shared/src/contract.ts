@@ -288,3 +288,35 @@ export const userResetPasswordSchema = z.object({
   password: z.string().min(6).max(72),
 });
 export type UserResetPasswordInput = z.infer<typeof userResetPasswordSchema>;
+
+// ─── Chatbot de WhatsApp (solo OWNER) ────────────────────────────────────────
+
+export const botNumberCreateSchema = z.object({
+  businessId: z.string().uuid(),
+  /** Número de WhatsApp autorizado (se compara por los últimos 9 dígitos). */
+  numero: z.string().min(8).max(30),
+  /** Etiqueta: de quién es el número (p. ej. "Fernanda — dueña"). */
+  nombre: z.string().max(80).optional(),
+});
+export type BotNumberCreateInput = z.infer<typeof botNumberCreateSchema>;
+
+/** Fila de la lista de números autorizados del chatbot. */
+export interface BotNumberRow {
+  id: string;
+  businessId: string;
+  negocio: string;
+  numero: string;
+  nombre: string;
+  activo: boolean;
+  createdAt: string;
+}
+
+/** Estado de la conexión del chatbot (instancia de Evolution + IA). */
+export interface ChatbotEstado {
+  configurado: boolean;
+  instancia: string;
+  estado: string;
+  numero: string | null;
+  iaConfigurada: boolean;
+  modelo: string;
+}

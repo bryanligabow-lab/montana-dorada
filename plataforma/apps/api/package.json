@@ -15,6 +15,7 @@
     "migrate:sheets": "tsx src/migrate-from-sheets.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.115.0",
     "@asis/shared": "workspace:*",
     "@electric-sql/pglite": "^0.2.13",
     "@fastify/cors": "^10.0.1",

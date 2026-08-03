@@ -7,6 +7,7 @@ import { applyBranding } from '../lib/theme';
 import { Login } from '../admin/Login';
 import { Negocios } from './Negocios';
 import { Usuarios } from './Usuarios';
+import { Chatbot } from './Chatbot';
 
 // Tema fijo del Panel de Dueño: no depende de la marca de ningún negocio.
 const OWNER_THEME = { primary: '#D4AF37', accent: '#E53935', bg: '#0A0A0F', card: '#15151F' };
@@ -93,6 +94,14 @@ function OwnerShell({ onLogout }: { onLogout: () => void }) {
           >
             👤 Usuarios
           </NavLink>
+          <NavLink
+            to="chatbot"
+            className={({ isActive }) =>
+              `px-3 py-2 rounded-lg text-sm ${isActive ? 'btn-brand' : 'text-ink hover:bg-white/5'}`
+            }
+          >
+            🤖 Chatbot
+          </NavLink>
         </nav>
         <button onClick={onLogout} className="text-xs text-muted hover:text-ink">
           Salir
@@ -102,6 +111,7 @@ function OwnerShell({ onLogout }: { onLogout: () => void }) {
         <Routes>
           <Route index element={<Negocios />} />
           <Route path="usuarios" element={<Usuarios />} />
+          <Route path="chatbot" element={<Chatbot />} />
           <Route path="*" element={<Navigate to="" replace />} />
         </Routes>
       </main>
