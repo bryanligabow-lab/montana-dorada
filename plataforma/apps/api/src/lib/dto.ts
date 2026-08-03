@@ -1,0 +1,32 @@
+import type { Advance, Attendance, AuditLog, Business, Employee, Punctuality } from '@asis/shared';
+import type { advances, attendance, auditLog, businesses, employees, punctuality } from '../db/schema';
+
+export function toBusiness(b: typeof businesses.$inferSelect): Business {
+  return { ...b, createdAt: b.createdAt.toISOString() };
+}
+
+export function toEmployee(e: typeof employees.$inferSelect): Employee {
+  return { ...e, createdAt: e.createdAt.toISOString() };
+}
+
+export function toAttendance(a: typeof attendance.$inferSelect): Attendance {
+  return {
+    ...a,
+    entradaAt: a.entradaAt ? a.entradaAt.toISOString() : null,
+    salidaAt: a.salidaAt ? a.salidaAt.toISOString() : null,
+    almuerzoSalidaAt: a.almuerzoSalidaAt ? a.almuerzoSalidaAt.toISOString() : null,
+    almuerzoRegresoAt: a.almuerzoRegresoAt ? a.almuerzoRegresoAt.toISOString() : null,
+  };
+}
+
+export function toPunctuality(p: typeof punctuality.$inferSelect): Punctuality {
+  return { ...p, createdAt: p.createdAt.toISOString() };
+}
+
+export function toAuditLog(l: typeof auditLog.$inferSelect): AuditLog {
+  return { ...l, createdAt: l.createdAt.toISOString() };
+}
+
+export function toAdvance(a: typeof advances.$inferSelect): Advance {
+  return { ...a, createdAt: a.createdAt.toISOString() };
+}

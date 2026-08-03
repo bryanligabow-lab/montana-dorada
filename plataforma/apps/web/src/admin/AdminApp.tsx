@@ -1,0 +1,156 @@
+import { useEffect, useState } from 'react';
+import { Link, NavLink, Navigate, Route, Routes, useNavigate, useSearchParams } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import type { Business, User } from '@asis/shared';
+import { api, getToken, setToken } from '../lib/api';
+import { applyBranding } from '../lib/theme';
+import { AdminContext, useAdmin } from './ctx';
+import { Login } from './Login';
+import { Ranking } from './pages/Ranking';
+import { Asistencia } from './pages/Asistencia';
+import { Empleados } from './pages/Empleados';
+import { Nomina } from './pages/Nomina';
+import { Anticipos } from './pages/Anticipos';
+import { Auditoria } from './pages/Auditoria';
+import { Config } from './pages/Config';
+
+export function AdminApp() {
+  const [token, setTok] = useState(getToken());
+  if (!token) return <Login onLogin={() => setTok(getToken())} />;
+  return (
+    <Shell
+      onLogout={() => {
+        localStorage.removeItem('asis_current_biz');
+        setToken(null);
+        setTok(null);
+      }}
+    />
+  );
+}
+
+function Shell({ onLogout }: { onLogout: () => void }) {
+  const me = useQuery({
+    queryKey: ['me'],
+    queryFn: () => api<{ user: User; businesses: Business[] }>('/api/auth/me', { auth: true }),
+  });
+  const [params] = useSearchParams();
+  const navigate = useNavigate();
+  const [currentId, setCurrentIdState] = useState<string | null>(null);
+
+  const user = me.data?.user;
+  const businesses = me.data?.businesses ?? [];
+  const current = businesses.find((b) => b.id === currentId) ?? businesses[0];
+
+  // Recuerda el negocio elegido para que al recargar NO caiga en el primero de la lista.
+  const setCurrentId = (id: string) => {
+    setCurrentIdState(id);
+    localStorage.setItem('asis_current_biz', id);
+  };
+
+  useEffect(() => {
+    if (!businesses.length || currentId) return;
+    // Prioridad: ?biz= de la URL (entrar desde el panel de dueño) > último negocio recordado.
+    // El `find` valida contra los negocios accesibles: un id que ya no corresponde se descarta solo.
+    const wanted = params.get('biz');
+    const bySlug = wanted ? businesses.find((b) => b.slug === wanted) : undefined;
+    const stored = localStorage.getItem('asis_current_biz');
+    const byStored = stored ? businesses.find((b) => b.id === stored) : undefined;
+    const resolved = bySlug ?? byStored;
+    if (resolved) {
+      setCurrentId(resolved.id);
+      return;
+    }
+    // Sin negocio elegido: el DUEÑO va a su panel maestro (lista de negocios), no a uno al azar.
+    // Un cliente (ADMIN) solo tiene su(s) negocio(s), así que entra directo al suyo.
+    if (user?.rol === 'OWNER') {
+      navigate('/owner', { replace: true });
+      return;
+    }
+    setCurrentId(businesses[0]!.id);
+  }, [businesses, currentId, params, user, navigate]);
+
+  useEffect(() => {
+    if (current) applyBranding(current.branding);
+  }, [current]);
+
+  if (me.isLoading)
+    return <div className="min-h-screen flex items-center justify-center text-muted">Cargando…</div>;
+  if (me.isError || !me.data) {
+    onLogout();
+    return null;
+  }
+  if (!current)
+    return (
+      <div className="min-h-screen flex items-center justify-center text-muted p-6 text-center">
+        No tienes negocios asignados.
+      </div>
+    );
+
+  return (
+    <AdminContext.Provider value={{ user: me.data.user, current, logout: onLogout }}>
+      <Layout />
+    </AdminContext.Provider>
+  );
+}
+
+const NAV = [
+  { to: '', label: 'Ranking', end: true },
+  { to: 'asistencia', label: 'Asistencia', end: false },
+  { to: 'empleados', label: 'Empleados', end: false },
+  { to: 'nomina', label: 'Nómina', end: false },
+  { to: 'anticipos', label: 'Anticipos', end: false },
+  { to: 'auditoria', label: 'Auditoría', end: false },
+  { to: 'config', label: 'Configuración', end: false },
+];
+
+function Layout() {
+  const { current, logout, user } = useAdmin();
+  return (
+    <div className="min-h-screen md:flex">
+      <aside className="md:w-60 md:min-h-screen border-b md:border-b-0 md:border-r border-white/10 p-4">
+        <div className="flex items-center gap-2 mb-3">
+          {current.branding.logoUrl && (
+            <img src={current.branding.logoUrl} alt="" className="h-9 w-9 object-contain rounded" />
+          )}
+          <div className="font-black text-lg" style={{ color: 'var(--c-primary)' }}>
+            {current.nombre}
+          </div>
+        </div>
+        {user.rol === 'OWNER' && (
+          <Link to="/owner" className="block text-xs mb-3 text-muted hover:text-ink">
+            👑 Panel de dueño
+          </Link>
+        )}
+        <nav className="flex md:flex-col gap-1 flex-wrap">
+          {NAV.map((n) => (
+            <NavLink
+              key={n.to}
+              to={n.to}
+              end={n.end}
+              className={({ isActive }) =>
+                `px-3 py-2 rounded-lg text-sm ${isActive ? 'btn-brand' : 'text-ink hover:bg-white/5'}`
+              }
+            >
+              {n.label}
+            </NavLink>
+          ))}
+        </nav>
+        <button onClick={logout} className="mt-4 text-xs text-muted hover:text-ink">
+          Salir ({user.nombre})
+        </button>
+      </aside>
+      <main className="flex-1 p-4 md:p-6 overflow-x-hidden">
+        <Routes>
+          <Route index element={<Ranking />} />
+          <Route path="asistencia" element={<Asistencia />} />
+          <Route path="empleados" element={<Empleados />} />
+          <Route path="nomina" element={<Nomina />} />
+          <Route path="anticipos" element={<Anticipos />} />
+          <Route path="auditoria" element={<Auditoria />} />
+          <Route path="config" element={<Config />} />
+          <Route path="*" element={<Navigate to="" replace />} />
+        </Routes>
+      </main>
+    </div>
+  );
+}

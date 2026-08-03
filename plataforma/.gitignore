@@ -1,0 +1,17 @@
+node_modules/
+dist/
+build/
+*.log
+.env
+.env.local
+.env.*.local
+
+# PGlite (base de datos embebida de desarrollo)
+.pglite/
+
+# Drizzle
+drizzle/meta/_journal.json.bak
+
+.DS_Store
+coverage/
+*.tsbuildinfo

@@ -1,0 +1,61 @@
+# Topología para self-host / referencia de EasyPanel.
+# En EasyPanel normalmente creas estos 3 servicios desde la UI (Postgres como
+# servicio gestionado, API y Web como apps desde GitHub). Este compose sirve
+# para levantar todo junto en un VPS con Docker o para pruebas integrales.
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: asistencia
+      POSTGRES_PASSWORD: asistencia
+      POSTGRES_DB: asistencia
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U asistencia"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 8080
+      DATABASE_URL: postgres://asistencia:asistencia@db:5432/asistencia
+      JWT_SECRET: ${JWT_SECRET:-cambia-esto-en-produccion-por-favor}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      MAIL_FROM: ${MAIL_FROM:-}
+      REPORT_EMAILS: ${REPORT_EMAILS:-}
+      EVOLUTION_URL: ${EVOLUTION_URL:-}
+      EVOLUTION_KEY: ${EVOLUTION_KEY:-}
+      EVOLUTION_INSTANCE: ${EVOLUTION_INSTANCE:-}
+    ports:
+      - "8080:8080"
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:8080}
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "8081:80"
+
+volumes:
+  db-data:

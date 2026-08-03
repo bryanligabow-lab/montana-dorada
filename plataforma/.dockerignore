@@ -1,0 +1,7 @@
+**/node_modules
+**/dist
+**/.pglite
+**/*.log
+.git
+.github
+**/.DS_Store

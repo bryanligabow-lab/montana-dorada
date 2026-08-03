@@ -1,0 +1,293 @@
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import type {
+  Advance,
+  AdvanceCreateInput,
+  Attendance,
+  AttendanceUpdateInput,
+  AuditLog,
+  Business,
+  BusinessCreateInput,
+  BusinessUpdateInput,
+  Employee,
+  EmployeeCreateInput,
+  EmployeeUpdateInput,
+  NominaRow,
+  PlatformUser,
+  PunctualitySummary,
+  SalidaAprobarInput,
+  UserCreateInput,
+  UserUpdateInput,
+} from '@asis/shared';
+import { api } from '../lib/api';
+
+export type AttendanceRow = Attendance & { empNombre: string; empCodigo: string };
+export type AdvanceRow = Advance & { empNombre: string; empCodigo: string };
+
+function qs(params: Record<string, string | undefined>): string {
+  const p = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) if (v) p.set(k, v);
+  const s = p.toString();
+  return s ? `?${s}` : '';
+}
+
+// ── Empleados ──────────────────────────────────────────────────────────────
+export function useEmployees(bizId: string) {
+  return useQuery({
+    queryKey: ['employees', bizId],
+    queryFn: () => api<Employee[]>(`/api/admin/businesses/${bizId}/employees`, { auth: true }),
+  });
+}
+
+export function useCreateEmployee(bizId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: EmployeeCreateInput) =>
+      api<Employee>(`/api/admin/businesses/${bizId}/employees`, { method: 'POST', body, auth: true }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['employees', bizId] }),
+  });
+}
+
+export function useUpdateEmployee(bizId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: EmployeeUpdateInput }) =>
+      api<Employee>(`/api/admin/employees/${id}`, { method: 'PATCH', body: data, auth: true }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['employees', bizId] }),
+  });
+}
+
+export function useDeactivateEmployee(bizId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api(`/api/admin/employees/${id}`, { method: 'DELETE', auth: true }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['employees', bizId] }),
+  });
+}
+
+export function useRegenerateQr(bizId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      api<{ qrToken: string }>(`/api/admin/employees/${id}/regenerate-qr`, {
+        method: 'POST',
+        auth: true,
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['employees', bizId] }),
+  });
+}
+
+// ── Asistencia / ranking / anomalías / auditoría ────────────────────────────
+export function useRanking(bizId: string, params: Record<string, string | undefined>) {
+  return useQuery({
+    queryKey: ['ranking', bizId, params],
+    queryFn: () =>
+      api<PunctualitySummary[]>(`/api/admin/businesses/${bizId}/ranking${qs(params)}`, { auth: true }),
+  });
+}
+
+export function useAttendance(bizId: string, params: Record<string, string | undefined>) {
+  return useQuery({
+    queryKey: ['attendance', bizId, params],
+    queryFn: () =>
+      api<AttendanceRow[]>(`/api/admin/businesses/${bizId}/attendance${qs(params)}`, { auth: true }),
+  });
+}
+
+/** Invalida todo lo que se deriva de attendance/punctuality (ranking, nómina, auditoría) además del listado. */
+function invalidateAttendanceDerived(qc: ReturnType<typeof useQueryClient>, bizId: string): void {
+  qc.invalidateQueries({ queryKey: ['attendance', bizId] });
+  qc.invalidateQueries({ queryKey: ['ranking', bizId] });
+  qc.invalidateQueries({ queryKey: ['nomina', bizId] });
+  qc.invalidateQueries({ queryKey: ['audit', bizId] });
+  qc.invalidateQueries({ queryKey: ['salidas-pendientes', bizId] });
+}
+
+/** Salidas registradas manualmente por los empleados (olvidos) que esperan aprobación. */
+export function useSalidasPendientes(bizId: string) {
+  return useQuery({
+    queryKey: ['salidas-pendientes', bizId],
+    queryFn: () =>
+      api<AttendanceRow[]>(`/api/admin/businesses/${bizId}/salidas-pendientes`, { auth: true }),
+  });
+}
+
+/** Aprueba (opcionalmente corrigiendo la hora) o rechaza una salida manual. */
+export function useAprobarSalida(bizId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: SalidaAprobarInput }) =>
+      api<Attendance>(`/api/admin/attendance/${id}/aprobar-salida`, { method: 'POST', body: data, auth: true }),
+    onSuccess: () => invalidateAttendanceDerived(qc, bizId),
+  });
+}
+
+export function useUpdateAttendance(bizId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: AttendanceUpdateInput }) =>
+      api<Attendance>(`/api/admin/attendance/${id}`, { method: 'PATCH', body: data, auth: true }),
+    onSuccess: () => invalidateAttendanceDerived(qc, bizId),
+  });
+}
+
+export function useDeleteAttendance(bizId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api(`/api/admin/attendance/${id}`, { method: 'DELETE', auth: true }),
+    onSuccess: () => invalidateAttendanceDerived(qc, bizId),
+  });
+}
+
+export function useAnomalies(bizId: string, params: Record<string, string | undefined>) {
+  return useQuery({
+    queryKey: ['anomalies', bizId, params],
+    queryFn: () =>
+      api<AttendanceRow[]>(`/api/admin/businesses/${bizId}/anomalies${qs(params)}`, { auth: true }),
+  });
+}
+
+export function useNomina(bizId: string, from: string, to: string) {
+  return useQuery({
+    queryKey: ['nomina', bizId, from, to],
+    queryFn: () => api<NominaRow[]>(`/api/admin/businesses/${bizId}/nomina${qs({ from, to })}`, { auth: true }),
+    enabled: !!from && !!to,
+  });
+}
+
+/** Envía el informe completo del período al dueño (WhatsApp de reportes + correos). */
+export function useEnviarNominaDueno(bizId: string) {
+  return useMutation({
+    mutationFn: ({ from, to }: { from: string; to: string }) =>
+      api<{ whatsapp: number; email: number }>(
+        `/api/admin/businesses/${bizId}/nomina/enviar-dueno${qs({ from, to })}`,
+        { method: 'POST', auth: true },
+      ),
+  });
+}
+
+/** Envía a cada empleado su recibo de nómina en PDF por WhatsApp. */
+export function useEnviarNominaEmpleados(bizId: string) {
+  return useMutation({
+    mutationFn: ({ from, to }: { from: string; to: string }) =>
+      api<{ enviados: number; sinTelefono: number; total: number }>(
+        `/api/admin/businesses/${bizId}/nomina/enviar-empleados${qs({ from, to })}`,
+        { method: 'POST', auth: true },
+      ),
+  });
+}
+
+export function useAudit(bizId: string) {
+  return useQuery({
+    queryKey: ['audit', bizId],
+    queryFn: () => api<AuditLog[]>(`/api/admin/businesses/${bizId}/audit`, { auth: true }),
+  });
+}
+
+// ── Anticipos ────────────────────────────────────────────────────────────────
+export function useAdvances(bizId: string, params: Record<string, string | undefined>) {
+  return useQuery({
+    queryKey: ['advances', bizId, params],
+    queryFn: () =>
+      api<AdvanceRow[]>(`/api/admin/businesses/${bizId}/advances${qs(params)}`, { auth: true }),
+  });
+}
+
+export function useCreateAdvance(bizId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: AdvanceCreateInput) =>
+      api<Advance>(`/api/admin/businesses/${bizId}/advances`, { method: 'POST', body: data, auth: true }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['advances', bizId] });
+      qc.invalidateQueries({ queryKey: ['nomina', bizId] });
+    },
+  });
+}
+
+export function useDeleteAdvance(bizId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api(`/api/admin/advances/${id}`, { method: 'DELETE', auth: true }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['advances', bizId] });
+      qc.invalidateQueries({ queryKey: ['nomina', bizId] });
+    },
+  });
+}
+
+// ── Configuración del negocio ───────────────────────────────────────────────
+export function useUpdateBusiness(bizId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: BusinessUpdateInput) =>
+      api<Business>(`/api/admin/businesses/${bizId}`, { method: 'PATCH', body: data, auth: true }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['me'] });
+    },
+  });
+}
+
+// ── Panel de dueño (OWNER): todos los negocios, crear, suspender/activar ─────
+export function useBusinesses() {
+  return useQuery({
+    queryKey: ['businesses'],
+    queryFn: () => api<Business[]>('/api/admin/businesses', { auth: true }),
+  });
+}
+
+export function useCreateBusiness() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: BusinessCreateInput) =>
+      api<Business>('/api/admin/businesses', { method: 'POST', body: data, auth: true }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['businesses'] });
+      qc.invalidateQueries({ queryKey: ['me'] });
+    },
+  });
+}
+
+export function useToggleBusiness() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, activo }: { id: string; activo: boolean }) =>
+      api(`/api/admin/businesses/${id}/estado`, { method: 'PATCH', body: { activo }, auth: true }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['businesses'] });
+      qc.invalidateQueries({ queryKey: ['me'] });
+    },
+  });
+}
+
+// ── Panel de dueño (OWNER): usuarios/accesos por negocio ────────────────────
+export function useUsers() {
+  return useQuery({
+    queryKey: ['users'],
+    queryFn: () => api<PlatformUser[]>('/api/admin/users', { auth: true }),
+  });
+}
+
+export function useCreateUser() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: UserCreateInput) =>
+      api<PlatformUser>('/api/admin/users', { method: 'POST', body: data, auth: true }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['users'] }),
+  });
+}
+
+export function useUpdateUser() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: UserUpdateInput }) =>
+      api<PlatformUser>(`/api/admin/users/${id}`, { method: 'PATCH', body: data, auth: true }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['users'] }),
+  });
+}
+
+export function useResetPassword() {
+  return useMutation({
+    mutationFn: ({ id, password }: { id: string; password: string }) =>
+      api(`/api/admin/users/${id}/password`, { method: 'PATCH', body: { password }, auth: true }),
+  });
+}

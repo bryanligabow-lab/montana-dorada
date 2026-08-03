@@ -2,6 +2,13 @@
   "version": "0.0.1",
   "configurations": [
     {
+      "name": "asistencia-web",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "plataforma/apps/web", "run", "dev"],
+      "port": 5173,
+      "autoPort": true
+    },
+    {
       "name": "dashboard",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["--prefix", "dashboard", "run", "dev"],

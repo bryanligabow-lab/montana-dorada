@@ -1,0 +1,44 @@
+{
+  "name": "@asis/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsup",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "db:generate": "drizzle-kit generate",
+    "db:push": "tsx src/scripts/migrate.ts",
+    "db:seed": "tsx src/seed.ts",
+    "migrate:sheets": "tsx src/migrate-from-sheets.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.115.0",
+    "@asis/shared": "workspace:*",
+    "@electric-sql/pglite": "^0.2.13",
+    "@fastify/cors": "^10.0.1",
+    "@fastify/jwt": "^9.0.1",
+    "bcryptjs": "^2.4.3",
+    "drizzle-orm": "^0.36.4",
+    "fastify": "^5.2.0",
+    "node-cron": "^3.0.3",
+    "nodemailer": "^6.9.16",
+    "pdf-lib": "^1.17.1",
+    "pg": "^8.13.1",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^22.10.1",
+    "@types/node-cron": "^3.0.11",
+    "@types/nodemailer": "^6.4.17",
+    "@types/pg": "^8.11.10",
+    "drizzle-kit": "^0.28.1",
+    "tsup": "^8.3.5",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.8"
+  }
+}
