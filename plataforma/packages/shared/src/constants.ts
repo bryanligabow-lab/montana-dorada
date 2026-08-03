@@ -47,3 +47,10 @@ export const DEFAULT_BUSINESS = {
 export const DUPLICATE_WINDOW_SECONDS = 60;
 /** Minutos mínimos entre entrada y salida. */
 export const MIN_MINUTES_BETWEEN_ENTRY_EXIT = 5;
+/**
+ * Cuántos días hacia atrás se le exige al empleado registrar una salida olvidada antes de poder marcar.
+ * Solo bloquean los días recientes (p. ej. "la salida de ayer", con margen para fines de semana). Los
+ * días abiertos más antiguos NO bloquean la marcación —son historial que el admin limpia desde el panel—
+ * para no arrastrar meses de salidas sin marcar de antes de que existiera esta función.
+ */
+export const DIAS_MAX_SALIDA_PENDIENTE = 3;

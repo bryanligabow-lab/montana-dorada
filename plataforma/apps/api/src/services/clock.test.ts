@@ -339,4 +339,47 @@ describe('flujo de marcación (integración con PGlite)', () => {
     const aprobada = await aprobarSalida(db, row, true);
     expect(aprobada.salidaAprob).toBe('APROBADA');
   });
+
+  it('no bloquea por salidas olvidadas ANTIGUAS (fuera de la ventana de días recientes)', async () => {
+    const db = await setup();
+    const biz = (
+      await db
+        .insert(businesses)
+        .values({
+          slug: 'antiguo',
+          nombre: 'Antiguo',
+          timezone: 'America/Guayaquil',
+          radioMetros: 80,
+          horarios: horariosFijos('08:00:00'),
+          horariosSalida: horariosFijos('17:00:00'),
+          multaMonto: 0.1,
+          multaIntervaloMin: 1,
+          dayCutoffHour: 2,
+          gpsRequerido: false,
+        })
+        .returning()
+    )[0]!;
+    const emp = (
+      await db
+        .insert(employees)
+        .values({ businessId: biz.id, codigo: 'ANT1', qrToken: 'tokenANTIGUO1', nombre: 'Ana Antigua' })
+        .returning()
+    )[0]!;
+
+    // Día abierto MUY viejo (entró, nunca marcó salida): historial previo a la función.
+    await db.insert(attendance).values({
+      businessId: biz.id,
+      employeeId: emp.id,
+      fecha: '2026-05-01',
+      horaEntrada: '08:00:00',
+      entradaAt: new Date('2026-05-01T13:00:00Z'),
+      estado: 'A_TIEMPO',
+    });
+
+    // Casi 2 meses después: el día viejo NO debe bloquear ni aparecer como pendiente.
+    const ctx = await getClockContext(db, 'tokenANTIGUO1', new Date('2026-06-30T12:30:00Z'));
+    expect(ctx?.pendientesSalida).toHaveLength(0);
+    const r = await clock({ db, now: new Date('2026-06-30T12:30:00Z') }, { token: 'tokenANTIGUO1', action: 'entrada' });
+    expect(r?.kind).toBe('entrada');
+  });
 });

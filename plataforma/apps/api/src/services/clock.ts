@@ -1,5 +1,5 @@
-import { and, asc, eq, isNull, lt } from 'drizzle-orm';
-import { MIN_MINUTES_BETWEEN_ENTRY_EXIT, MOTIVOS_TARDANZA } from '@asis/shared';
+import { and, asc, eq, gte, isNull, lt } from 'drizzle-orm';
+import { DIAS_MAX_SALIDA_PENDIENTE, MIN_MINUTES_BETWEEN_ENTRY_EXIT, MOTIVOS_TARDANZA } from '@asis/shared';
 import type { ClockAction, ClockContext, ClockResult, PendienteSalida } from '@asis/shared';
 import type { DB } from '../db';
 import { attendance, businesses, employees, punctuality } from '../db/schema';
@@ -66,11 +66,23 @@ async function rowDeHoy(db: DB, empId: string, fecha: string): Promise<Att | und
   )[0];
 }
 
+/** Resta `dias` a una fecha 'yyyy-MM-dd' y devuelve la fecha resultante 'yyyy-MM-dd'. */
+function restarDiasISO(fecha: string, dias: number): string {
+  const [y, m, d] = fecha.split('-').map(Number) as [number, number, number];
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  dt.setUTCDate(dt.getUTCDate() - dias);
+  return dt.toISOString().slice(0, 10);
+}
+
 /**
- * Días anteriores a `fechaHoy` en los que el empleado entró pero nunca marcó su salida.
+ * Días RECIENTES anteriores a `fechaHoy` en los que el empleado entró pero nunca marcó su salida.
+ * Solo se consideran los últimos `DIAS_MAX_SALIDA_PENDIENTE` días (p. ej. "la salida de ayer", con
+ * margen para fines de semana): los días abiertos más antiguos son historial que NO bloquea la
+ * marcación —se limpian desde el panel— para no arrastrar meses de salidas sin marcar.
  * Deben resolverse (registrando la salida manual) antes de que pueda marcar una nueva entrada.
  */
 async function pendientesSalidaPrevias(db: DB, empId: string, fechaHoy: string): Promise<PendienteSalida[]> {
+  const desde = restarDiasISO(fechaHoy, DIAS_MAX_SALIDA_PENDIENTE);
   const rows = await db
     .select()
     .from(attendance)
@@ -78,6 +90,7 @@ async function pendientesSalidaPrevias(db: DB, empId: string, fechaHoy: string):
       and(
         eq(attendance.employeeId, empId),
         lt(attendance.fecha, fechaHoy),
+        gte(attendance.fecha, desde),
         isNull(attendance.salidaAt),
         isNull(attendance.horaSalida),
       ),
